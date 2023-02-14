@@ -43,17 +43,25 @@ def get_one_set_closure(R, F, S):
     return sorted(list(A_set))
 
 
+# Let FD be X -> {A} 
+# Remove functional dependencies with empty X or empty A 
+def remove_empty_functional_dependency(F):
+    return filter(lambda FD: len(FD[0]) > 0 and len(FD[1]) > 0, F)
+
 
 ## Q1a. Determine the closure of a given set of attribute S the schema R and functional dependency F
 def closure(R, F, S):
-    return get_one_set_closure(R, F, S)
+    non_empty_F = remove_empty_functional_dependency(F)
+    return get_one_set_closure(R, non_empty_F, S)
 
 ## Q1b. Determine all attribute closures excluding superkeys that are not candidate keys given the schema R and functional dependency F
 def all_closures(R, F): 
+    non_empty_F = remove_empty_functional_dependency(F)
+
     all_closure_sets = get_subsets_of_attribute_set(R)
     all_closures_results = []
     for closure_set in all_closure_sets:
-        all_closures_results.append([sorted(list(closure_set)), get_one_set_closure(R, F, list(closure_set))])
+        all_closures_results.append([sorted(list(closure_set)), get_one_set_closure(R, non_empty_F, list(closure_set))])
     #TODO: exclude super keys not candidate keys
     return all_closures_results
     
