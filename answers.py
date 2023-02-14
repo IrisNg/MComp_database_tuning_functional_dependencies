@@ -32,7 +32,9 @@ def all_closures(R, F):
     
 ## Q2a. Return a minimal cover of the functional dependencies of a given schema R and functional dependencies F.
 def min_cover(R, FD): 
-    return []
+    non_empty_F = remove_empty_functional_dependency(FD)
+
+    return get_min_covers(R, non_empty_F, restrict_to_first_min_cover = True)
 
 ## Q2b. Return all minimal covers reachable from the functional dependencies of a given schema R and functional dependencies F.
 def min_covers(R, FD):
@@ -86,15 +88,16 @@ def get_one_set_closure(R, F, S):
     return sorted(list(A_set))
 
 
+# C should be a list of closures, sorted from singletons to pairs to triplet etc,
+# else algorithm will not be able to find candidate keys in earlier loops before finding superkeys that are not candidate keys in later loops 
 def remove_non_candidatekey_superkey(R, C):
     num_schema_attributes = len(R)
     candidate_keys = []
     filtered_C = []
 
-    # C should be a list of closures, sorted from singletons to pairs to triplet etc 
     for closure in C:
+        # Not superkey, add closure to filtered list
         if (len(closure[1]) != num_schema_attributes):
-            # Not superkey
             filtered_C.append(closure)
 
         # Is superkey
@@ -106,8 +109,33 @@ def remove_non_candidatekey_superkey(R, C):
     return filtered_C
 
 
+def get_min_covers(R, F, restrict_to_first_min_cover):
+    # Step 1 - get F': Minimize right hand-side of every functional dependency to attain form X -> {A}
+    decomposed_F = decompose_functional_dependencies(F)
+    print('decomposed', decomposed_F)
+
+    incl_transitive_F = add_transitive_functional_dependencies(decomposed_F)
 
 
+# Using Armstrong Axioms decomposition rule, decompose FD into multiple FDs if right hand-side of FD has multiple attributes
+# Example {{A} -> {B,C}} => {{A} -> {B}, {A} -> {C}}  
+def decompose_functional_dependencies(F):
+    decomposed_F = []
+
+    for FD in F:
+        if (len(FD[1]) == 1):
+            decomposed_F.append(FD)
+        else:
+            for attribute in FD[1]:
+                decomposed_F.append([FD[0], [attribute]])
+
+    return decomposed_F
+
+
+def add_transitive_functional_dependencies(F):
+    added_F = F.copy()
+
+    
 
 # Main functions
 def main():
@@ -115,13 +143,13 @@ def main():
     R = ['A', 'B', 'C', 'D']
     FD = [[['A', 'B'], ['C']], [['C'], ['D']]]
 
-    print(closure(R, FD, ['A']))
-    print(closure(R, FD, ['A', 'B']))
-    print(all_closures(R, FD))
+    # print(closure(R, FD, ['A']))
+    # print(closure(R, FD, ['A', 'B']))
+    # print(all_closures(R, FD))
 
-#     R = ['A', 'B', 'C', 'D', 'E', 'F']
-#     FD = [[['A'], ['B', 'C']], [['B'], ['C','D']], [['D'], ['B']], [['A','B','E'], ['F']]]
-#     print(min_cover(R, FD)) 
+    R = ['A', 'B', 'C', 'D', 'E', 'F']
+    FD = [[['A'], ['B', 'C']], [['B'], ['C','D']], [['D'], ['B']], [['A','B','E'], ['F']]]
+    print(min_cover(R, FD)) 
 
 #     R = ['A', 'B', 'C']
 #     FD = [[['A'], ['B']], [['B'], ['C']], [['C'], ['A']]] 
