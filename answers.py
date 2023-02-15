@@ -114,8 +114,19 @@ def get_min_covers(R, F, restrict_to_first_min_cover):
     decomposed_F = decompose_functional_dependencies(F)
     print('decomposed', decomposed_F)
 
-    incl_transitive_F = add_transitive_functional_dependencies(decomposed_F)
+    removed_trivial_decomposed_F = remove_trivial_functional_dependencies(list(map(convert_functional_dependency_list_to_set, decomposed_F)))
+
+    #TODO: this is in sets
+    incl_transitive_F = add_transitive_functional_dependencies(removed_trivial_decomposed_F)
     print('resulting transitive_F', incl_transitive_F)
+
+    simplified_lhs_rhs_F = simplify_lhs_functional_dependencies(removed_trivial_decomposed_F, incl_transitive_F)
+
+
+
+    
+
+
 
 
 # Using Armstrong Axioms decomposition rule, decompose FD into multiple FDs if right hand-side of FD has multiple attributes
@@ -165,7 +176,7 @@ def add_transitive_functional_dependencies(F):
 
                 # Check if first FD's right hand-side match with another FD's left hand-side to find transitive FD (Armstrong Axioms Transitivity Rule)
                 # But ignore trivial FD
-                if (inner_FD_lhs == FD_rhs and FD_lhs != inner_FD_rhs):
+                if (inner_FD_lhs == FD_rhs and not inner_FD_rhs.issubset(FD_lhs)):
                     transitive_FD = convert_functional_dependency_set_to_list([FD_lhs, inner_FD_rhs])
                     transitive_FD_string = convert_functional_dependency_list_to_string(transitive_FD) 
 
@@ -180,10 +191,57 @@ def add_transitive_functional_dependencies(F):
             # No new transitive FD has been added in last round of while loop, stop finding transitive FD
             break;
 
+    #TODO: remove?
     # Convert FD sets (including additional transitive FDs) back into list that is sorted alphabetically
-    result_F = list(map(convert_functional_dependency_set_to_list, added_F))
+    # result_F = list(map(convert_functional_dependency_set_to_list, added_F))
+    result_F = added_F
 
     return result_F
+
+
+def remove_trivial_functional_dependencies(F):
+    return list(filter(lambda FD: not FD[1].issubset(FD[0]), F))
+
+def simplify_lhs_functional_dependencies(simplified_rhs_F, incl_transitive_F):
+    # Store simplified alternative FDs instead of replacing into original list directly
+    # This is to find all minimal covers by choosing different alternatives
+    # Length correlates to original FD list to replace into original list using index later
+    # E.g. FD in simplified_alt[2] will replace into simplified_rhs_F[2] afterwards
+    simplified_alt = [[]] * len(simplified_rhs_F)
+
+    for FD_index, FD in enumerate(simplified_rhs_F):
+        FD_lhs = FD[0]
+        FD_rhs = FD[1]
+
+        # If left hand-side is already simplified to 1 attribute, then skip
+        if (len(FD_lhs) == 1):
+            continue
+
+        for inner_FD in incl_transitive_F:
+            inner_FD_lhs = inner_FD[0]
+            inner_FD_rhs = inner_FD[1]
+
+            # We are trying to replace left hand-side of outer FD with smaller subset
+            # If inner FD left hand-side is equal or greater than outer FD lhs in length, can skip
+            if (len(inner_FD_lhs) == len(FD_lhs)):
+                break
+            
+            # Simplification scenario 1: 
+            # outer rhs = inner rhs, AND inner lhs is a smaller subset of outer lhs
+            if (FD_rhs == inner_FD_rhs and inner_FD_lhs.issubset(FD_lhs)):
+                simplified_alt[FD_index].append(inner_FD)
+                continue
+            
+            # Simplification scenario 2:
+            # Using Armstrong Axioms Transitivity Rule, inner FD implies that a subset of outer FD lhs functionally determines another subset of outer FD lhs
+            # Example - outer FD = {A, B} -> {C}, and inner FD = {A} -> {B}, then outer FD can be replaced with {A} -> {C}
+            if (inner_FD_lhs.issubset(FD_lhs) and inner_FD_rhs.isubset(FD_lhs - inner_FD_lhs)):
+                simplified_alt[FD_index].append([(FD_lhs - inner_FD_rhs), FD_rhs])
+
+
+
+
+             
 
 
 
