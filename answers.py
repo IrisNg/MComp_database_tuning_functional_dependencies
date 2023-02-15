@@ -115,6 +115,7 @@ def get_min_covers(R, F, restrict_to_first_min_cover):
     print('decomposed', decomposed_F)
 
     incl_transitive_F = add_transitive_functional_dependencies(decomposed_F)
+    print('resulting transitive_F', incl_transitive_F)
 
 
 # Using Armstrong Axioms decomposition rule, decompose FD into multiple FDs if right hand-side of FD has multiple attributes
@@ -131,9 +132,59 @@ def decompose_functional_dependencies(F):
 
     return decomposed_F
 
+def convert_functional_dependency_list_to_string(FD):
+    return ''.join(FD[0]) + '->' + ''.join(FD[1])
+
+def convert_functional_dependency_list_to_set(FD):
+    return [set(FD[0]), set(FD[1])]
+
+def convert_functional_dependency_set_to_list(FD):
+    return [sorted(list(FD[0])), sorted(list(FD[1]))]
 
 def add_transitive_functional_dependencies(F):
-    added_F = F.copy()
+    added_F = list(map(convert_functional_dependency_list_to_set, F.copy()))
+    
+    # Maintain a set of FD strings for quick searching to check if FD is already added
+    set_F = set(list(map(convert_functional_dependency_list_to_string , F)))
+    print('set_F', set_F)
+
+    while (True):
+        counter = 0
+
+        for FD in added_F:
+            FD_lhs = FD[0]
+            FD_rhs = FD[1]
+
+            for inner_FD in added_F:
+                inner_FD_lhs = inner_FD[0]
+                inner_FD_rhs = inner_FD[1]
+
+                # Check if first FD's right hand-side match with another FD's left hand-side to find transitive FD (Armstrong Axioms Transitivity Rule)
+                # But ignore trivial FD
+                if (inner_FD_lhs == FD_rhs and FD_lhs != inner_FD_rhs):
+                    transitive_FD = convert_functional_dependency_set_to_list([FD_lhs, inner_FD_rhs])
+                    transitive_FD_string = convert_functional_dependency_list_to_string(transitive_FD) 
+
+                    # Check if transitive FD is already added previously
+                    if (transitive_FD_string not in set_F):
+                        # New transitive FD, add to cumulative list and set
+                        added_F.append(convert_functional_dependency_list_to_set(transitive_FD))
+                        set_F.add(transitive_FD_string)
+                        counter += 1
+    
+        if (counter == 0):
+            # No new transitive FD has been added in last round of while loop, stop finding transitive FD
+            break;
+
+    # Convert FD sets (including additional transitive FDs) back into list that is sorted alphabetically
+    result_F = list(map(convert_functional_dependency_set_to_list, added_F))
+
+    return result_F
+
+
+
+
+
 
     
 
