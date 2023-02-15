@@ -132,15 +132,19 @@ def decompose_functional_dependencies(F):
 
     return decomposed_F
 
+# Convert [['A'], ['B', 'C']] => 'A->BC'
 def convert_functional_dependency_list_to_string(FD):
     return ''.join(FD[0]) + '->' + ''.join(FD[1])
 
+# Convert [['A'], ['B', 'C']] => [{'A'}, {'B', 'C'}]
 def convert_functional_dependency_list_to_set(FD):
     return [set(FD[0]), set(FD[1])]
 
+# Convert and sort [{'D', 'A'}, {'C', 'B'}] => [['A', 'D'], ['B', 'C']]
 def convert_functional_dependency_set_to_list(FD):
     return [sorted(list(FD[0])), sorted(list(FD[1]))]
 
+# Find and add transitive functional dependencies to a list of original functional dependencies
 def add_transitive_functional_dependencies(F):
     added_F = list(map(convert_functional_dependency_list_to_set, F.copy()))
     
