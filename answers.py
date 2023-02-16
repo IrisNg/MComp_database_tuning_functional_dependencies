@@ -24,8 +24,9 @@ def all_closures(R, F):
     all_closure_attribute_sets = get_subsets_of_attribute_set(R)
     C = []
     for closure_attribute_set in all_closure_attribute_sets:
-        C.append([sorted(list(closure_attribute_set)), get_one_set_closure(R, non_empty_F, list(closure_attribute_set))])
-    
+        C.append([sorted(list(closure_attribute_set)), get_one_set_closure(
+            R, non_empty_F, list(closure_attribute_set))])
+
     filtered_C = remove_non_candidatekey_superkey(R, C)
 
     return filtered_C
@@ -34,7 +35,7 @@ def all_closures(R, F):
 def min_cover(R, FD): 
     non_empty_F = remove_empty_FD(FD)
 
-    return get_min_covers(R, non_empty_F, restrict_to_first_min_cover = True)
+    return get_min_covers(R, non_empty_F, restrict_to_first_min_cover=True)
 
 ## Q2b. Return all minimal covers reachable from the functional dependencies of a given schema R and functional dependencies F.
 def min_covers(R, FD):
@@ -52,8 +53,8 @@ def all_min_covers(R, FD):
 
 ## You can add additional functions below
 
-# Let FD be X -> {A} 
-# Remove functional dependencies with empty X or empty A 
+# Let FD be X -> {A}
+# Remove functional dependencies with empty X or empty A
 def remove_empty_FD(F):
     return list(filter(lambda FD: (len(FD[0]) > 0 and len(FD[1]) > 0), F))
 
@@ -81,16 +82,16 @@ def get_one_set_closure(R, F, S):
                 if (set(FD[0]) == subset and len(set(FD[1]) - A_set) > 0):
                     A_set.update(set(FD[1]) - A_set)
                     counter += 1
-        
+
         # if counter == 0, means no more FD could be inferred
         if ((len(A_set) == len(R)) or (counter == 0)):
-            break;
-    
+            break
+
     return sorted(list(A_set))
 
 
 # C should be a list of closures, sorted from singletons to pairs to triplet etc,
-# else algorithm will not be able to find candidate keys in earlier loops before finding superkeys that are not candidate keys in later loops 
+# else algorithm will not be able to find candidate keys in earlier loops before finding superkeys that are not candidate keys in later loops
 def remove_non_candidatekey_superkey(R, C):
     num_schema_attributes = len(R)
     candidate_keys = []
@@ -106,30 +107,24 @@ def remove_non_candidatekey_superkey(R, C):
         elif (len(candidate_keys) == 0 or any(True for ck in candidate_keys if not ck.issubset(set(closure[0])))):
             filtered_C.append(closure)
             candidate_keys.append(set(closure[0]))
-            
+
     return filtered_C
 
 
 def get_min_covers(R, F, restrict_to_first_min_cover):
     # Step 1 - get F': Minimize right hand-side of every functional dependency to attain form X -> {A}
-    decomposed_F = decompose_FD(F)
+    simplified_rhs_F = decompose_FD(F)
 
-    removed_trivial_decomposed_F = remove_trivial_FD(list(map(convert_FD_list_to_set, decomposed_F)))
+    simplified_rhs_F = remove_trivial_FD(
+        list(map(convert_FD_list_to_set, simplified_rhs_F)))
 
-    #TODO: this is in sets
-    incl_transitive_F = add_transitive_FD(removed_trivial_decomposed_F)
+    incl_transitive_F = add_transitive_FD(simplified_rhs_F)
 
-    simplified_lhs_rhs_F = simplify_lhs_FD(removed_trivial_decomposed_F, incl_transitive_F)
-
-
-
-    
-
-
+    simplified_lhs_rhs_F = simplify_lhs_FD(simplified_rhs_F, incl_transitive_F)
 
 
 # Using Armstrong Axioms decomposition rule, decompose FD into multiple FDs if right hand-side of FD has multiple attributes
-# Example {{A} -> {B,C}} => {{A} -> {B}, {A} -> {C}}  
+# Example {{A} -> {B,C}} => {{A} -> {B}, {A} -> {C}}
 def decompose_FD(F):
     decomposed_F = []
 
@@ -144,7 +139,7 @@ def decompose_FD(F):
 
 # Convert [['A'], ['B', 'C']] => 'A->BC'
 def convert_FD_list_to_string(FD):
-    return ''.join(FD[0]) + '->' + ''.join(FD[1])
+    return ''.join(sorted(FD[0])) + '->' + ''.join(sorted(FD[1]))
 
 # Convert [['A'], ['B', 'C']] => [{'A'}, {'B', 'C'}]
 def convert_FD_list_to_set(FD):
@@ -157,9 +152,9 @@ def convert_FD_set_to_list(FD):
 # Find and add transitive functional dependencies to a list of original functional dependencies
 def add_transitive_FD(F):
     added_F = list(map(convert_FD_list_to_set, F.copy()))
-    
+
     # Maintain a set of FD strings for quick searching to check if FD is already added
-    set_F = set(list(map(convert_FD_list_to_string , F)))
+    set_F = set(list(map(convert_FD_list_to_string, F.copy())))
     print('set_F', set_F)
 
     while (True):
@@ -176,8 +171,10 @@ def add_transitive_FD(F):
                 # Check if first FD's right hand-side match with another FD's left hand-side to find transitive FD (Armstrong Axioms Transitivity Rule)
                 # But ignore trivial FD
                 if (inner_FD_lhs == FD_rhs and not inner_FD_rhs.issubset(FD_lhs)):
-                    transitive_FD = convert_FD_set_to_list([FD_lhs, inner_FD_rhs])
-                    transitive_FD_string = convert_FD_list_to_string(transitive_FD) 
+                    transitive_FD = convert_FD_set_to_list(
+                        [FD_lhs, inner_FD_rhs])
+                    transitive_FD_string = convert_FD_list_to_string(
+                        transitive_FD)
 
                     # Check if transitive FD is already added previously
                     if (transitive_FD_string not in set_F):
@@ -185,11 +182,10 @@ def add_transitive_FD(F):
                         added_F.append(convert_FD_list_to_set(transitive_FD))
                         set_F.add(transitive_FD_string)
                         counter += 1
-    
+
         if (counter == 0):
             # No new transitive FD has been added in last round of while loop, stop finding transitive FD
-            break;
-
+            break
 
     return added_F
 
@@ -197,12 +193,13 @@ def add_transitive_FD(F):
 def remove_trivial_FD(F):
     return list(filter(lambda FD: not FD[1].issubset(FD[0]), F))
 
+
 def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F):
     # Store simplified alternative FDs instead of replacing into original list directly
     # This is to find all minimal covers by choosing different alternatives
     # Length correlates to original FD list to replace into original list using index later
     # E.g. FD in simplified_alt[2] will replace into simplified_rhs_F[2] afterwards
-    simplified_alt = [[]] * len(simplified_rhs_F)
+    simplified_alt = [[] for i in range(len(simplified_rhs_F))]
 
     for FD_index, FD in enumerate(simplified_rhs_F):
         FD_lhs = FD[0]
@@ -220,22 +217,23 @@ def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F):
             # If inner FD left hand-side is equal or greater than outer FD lhs in length, then skip
             if (len(inner_FD_lhs) == len(FD_lhs)):
                 break
-            
+
             alt = simplified_alt[FD_index]
 
-            # Simplification scenario 1: 
+            # Simplification scenario 1:
             # outer FD rhs = inner FD rhs, AND inner FD lhs is a smaller subset of outer FD lhs
             # AND inner FD lhs has same number of attributes as any previously added alternatives, not more, otherwise it will not be minimal
             if (FD_rhs == inner_FD_rhs and inner_FD_lhs.issubset(FD_lhs) and (len(alt) == 0 or len(inner_FD_lhs) == len(alt[0][0]))):
                 simplified_alt[FD_index].append(inner_FD)
                 continue
-            
+
             # Simplification scenario 2:
             # Using Armstrong Axioms Transitivity Rule, inner FD implies that a subset of outer FD lhs functionally determines another subset of outer FD lhs
             # Example - outer FD = {A, B} -> {C}, and inner FD = {A} -> {B}, then outer FD can be replaced with {A} -> {C}
             # AND lhs of FD to add, has same number of attributes as any previously added alternatives, not more, otherwise it will not be minimal
             if (inner_FD_lhs.issubset(FD_lhs) and inner_FD_rhs.issubset(FD_lhs - inner_FD_lhs) and (len(alt) == 0 or len(FD_lhs - inner_FD_rhs) == len(alt[0][0]))):
-                simplified_alt[FD_index].append([(FD_lhs - inner_FD_rhs), FD_rhs])
+                simplified_alt[FD_index].append(
+                    [(FD_lhs - inner_FD_rhs), FD_rhs])
 
 
 
