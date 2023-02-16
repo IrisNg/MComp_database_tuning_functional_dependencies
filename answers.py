@@ -221,21 +221,25 @@ def simplify_lhs_functional_dependencies(simplified_rhs_F, incl_transitive_F):
             inner_FD_lhs = inner_FD[0]
             inner_FD_rhs = inner_FD[1]
 
-            # We are trying to replace left hand-side of outer FD with smaller subset
-            # If inner FD left hand-side is equal or greater than outer FD lhs in length, can skip
+            # We want to replace left hand-side of outer FD with smaller subset
+            # If inner FD left hand-side is equal or greater than outer FD lhs in length, then skip
             if (len(inner_FD_lhs) == len(FD_lhs)):
                 break
             
+            alt = simplified_alt[FD_index]
+
             # Simplification scenario 1: 
-            # outer rhs = inner rhs, AND inner lhs is a smaller subset of outer lhs
-            if (FD_rhs == inner_FD_rhs and inner_FD_lhs.issubset(FD_lhs)):
+            # outer FD rhs = inner FD rhs, AND inner FD lhs is a smaller subset of outer FD lhs
+            # AND inner FD lhs has same number of attributes as any previously added alternatives, not more, otherwise it will not be minimal
+            if (FD_rhs == inner_FD_rhs and inner_FD_lhs.issubset(FD_lhs) and (len(alt) == 0 or len(inner_FD_lhs) == len(alt[0][0]))):
                 simplified_alt[FD_index].append(inner_FD)
                 continue
             
             # Simplification scenario 2:
             # Using Armstrong Axioms Transitivity Rule, inner FD implies that a subset of outer FD lhs functionally determines another subset of outer FD lhs
             # Example - outer FD = {A, B} -> {C}, and inner FD = {A} -> {B}, then outer FD can be replaced with {A} -> {C}
-            if (inner_FD_lhs.issubset(FD_lhs) and inner_FD_rhs.isubset(FD_lhs - inner_FD_lhs)):
+            # AND lhs of FD to add, has same number of attributes as any previously added alternatives, not more, otherwise it will not be minimal
+            if (inner_FD_lhs.issubset(FD_lhs) and inner_FD_rhs.issubset(FD_lhs - inner_FD_lhs) and (len(alt) == 0 or len(FD_lhs - inner_FD_rhs) == len(alt[0][0]))):
                 simplified_alt[FD_index].append([(FD_lhs - inner_FD_rhs), FD_rhs])
 
 
