@@ -120,7 +120,9 @@ def get_min_covers(R, F, restrict_to_first_min_cover):
 
     incl_transitive_F = add_transitive_FD(simplified_rhs_F)
 
-    simplified_lhs_rhs_F = simplify_lhs_FD(simplified_rhs_F, incl_transitive_F)
+    many_simplified_lhs_rhs_F = simplify_lhs_FD(simplified_rhs_F, incl_transitive_F, restrict_to_first_min_cover)
+    print('========')
+    print('many_simplified_lhs_rhs_F', many_simplified_lhs_rhs_F)
 
 
 # Using Armstrong Axioms decomposition rule, decompose FD into multiple FDs if right hand-side of FD has multiple attributes
@@ -194,10 +196,12 @@ def remove_trivial_FD(F):
     return list(filter(lambda FD: not FD[1].issubset(FD[0]), F))
 
 
-def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F):
-    # Store simplified alternative FDs instead of replacing into original list directly
-    # This is to find all minimal covers by choosing different alternatives
-    # Length correlates to original FD list to replace into original list using index later
+def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F, restrict_to_first_min_cover):
+    # simplified_alt is a list of simplified alternative left hand-side for each FD
+    # There could be 0, or many alternatives for each FD, which will lead to different outcomes of minimal covers
+    # Store simplified alternative FDs separately instead of replacing into original list directly
+    # This is to find all minimal covers by choosing different alternatives later
+    # Length of simplified_alt correlates to original FD list to replace into original list using same index later
     # E.g. FD in simplified_alt[2] will replace into simplified_rhs_F[2] afterwards
     simplified_alt = [[] for i in range(len(simplified_rhs_F))]
 
@@ -235,10 +239,63 @@ def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F):
                 simplified_alt[FD_index].append(
                     [(FD_lhs - inner_FD_rhs), FD_rhs])
 
+    # TODO: remove duplicate alternative??
+
+    print('simplify_alt', simplified_alt)
+    # Get combinations of alternatives to find all minimal covers
+    # To use Python's itertools.product, convert FD format alternatives (nested list) into ids (string of nested indexes)
+    # Example - if simplified_alt = [[], [[{'A', 'E'}, {'F'}]]], id of alt FD [{'A', 'E'}, {'F'}] => [['1-0']]
+    simplified_alt_ids = []
+
+    for FD_index, alts in enumerate(simplified_alt):
+        if (len(alts) == 0):
+            continue
+
+        ids = []
+        for alt_index, alt in enumerate(alts):
+            ids.append(str(FD_index) + '-' + str(alt_index))
+
+        simplified_alt_ids.append(ids)
+
+    # If all FDs have no alternatives, exit and return only original F passed in as argument
+    if (len(simplified_alt_ids) == 0):
+        return [simplified_rhs_F]
+
+    print('hello', simplified_alt_ids)
+    all_combination = list(itertools.product(*simplified_alt_ids))
+
+    # If mode is set to only get one minimal cover, select only the first combination
+    if (restrict_to_first_min_cover):
+        all_combination = [all_combination[0]]
+
+    print('all possibilities', all_combination)
+    print('===========')
+    print('original F', simplified_rhs_F)
+
+    # Generate many sets of F based on different combinations of lhs alternatives for each FD
+    # This will get all minimal covers later (will also remove duplicated outcomes at the last step of finding minimal cover later)
+    many_F = []
+    for combi in all_combination:
+        alt_F = simplified_rhs_F.copy()
+
+        for id in combi:
+            split_id = id.split('-')
+            FD_index = int(split_id[0])
+            alt_index = int(split_id[1])
+            alt_F[FD_index] = simplified_alt[FD_index][alt_index]
+        many_F.append(alt_F)
+
+    # TODO: remove?
+    print('===========')
+    # print('many_F', many_F)
+    for F in many_F:
+        print('\n==============\n')
+        print(F)
+    # TODO: end remove?
+
+    return many_F
 
 
-
-             
 def remove_duplicate_FD(F):
     unique_F = []
     unique_F_string = set()
