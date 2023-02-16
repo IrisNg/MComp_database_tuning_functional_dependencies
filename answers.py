@@ -14,12 +14,12 @@ def student_number():
 
 ## Q1a. Determine the closure of a given set of attribute S the schema R and functional dependency F
 def closure(R, F, S):
-    non_empty_F = remove_empty_functional_dependency(F)
+    non_empty_F = remove_empty_FD(F)
     return get_one_set_closure(R, non_empty_F, S)
 
 ## Q1b. Determine all attribute closures excluding superkeys that are not candidate keys given the schema R and functional dependency F
 def all_closures(R, F): 
-    non_empty_F = remove_empty_functional_dependency(F)
+    non_empty_F = remove_empty_FD(F)
 
     all_closure_attribute_sets = get_subsets_of_attribute_set(R)
     C = []
@@ -32,7 +32,7 @@ def all_closures(R, F):
     
 ## Q2a. Return a minimal cover of the functional dependencies of a given schema R and functional dependencies F.
 def min_cover(R, FD): 
-    non_empty_F = remove_empty_functional_dependency(FD)
+    non_empty_F = remove_empty_FD(FD)
 
     return get_min_covers(R, non_empty_F, restrict_to_first_min_cover = True)
 
@@ -54,7 +54,7 @@ def all_min_covers(R, FD):
 
 # Let FD be X -> {A} 
 # Remove functional dependencies with empty X or empty A 
-def remove_empty_functional_dependency(F):
+def remove_empty_FD(F):
     return list(filter(lambda FD: (len(FD[0]) > 0 and len(FD[1]) > 0), F))
 
 
@@ -77,6 +77,7 @@ def get_one_set_closure(R, F, S):
         subsets = get_subsets_of_attribute_set(list(A_set))
         for subset in subsets:
             for FD in F:
+                # TODO: change to .issubset()?
                 if (set(FD[0]) == subset and len(set(FD[1]) - A_set) > 0):
                     A_set.update(set(FD[1]) - A_set)
                     counter += 1
@@ -111,16 +112,14 @@ def remove_non_candidatekey_superkey(R, C):
 
 def get_min_covers(R, F, restrict_to_first_min_cover):
     # Step 1 - get F': Minimize right hand-side of every functional dependency to attain form X -> {A}
-    decomposed_F = decompose_functional_dependencies(F)
-    print('decomposed', decomposed_F)
+    decomposed_F = decompose_FD(F)
 
-    removed_trivial_decomposed_F = remove_trivial_functional_dependencies(list(map(convert_functional_dependency_list_to_set, decomposed_F)))
+    removed_trivial_decomposed_F = remove_trivial_FD(list(map(convert_FD_list_to_set, decomposed_F)))
 
     #TODO: this is in sets
-    incl_transitive_F = add_transitive_functional_dependencies(removed_trivial_decomposed_F)
-    print('resulting transitive_F', incl_transitive_F)
+    incl_transitive_F = add_transitive_FD(removed_trivial_decomposed_F)
 
-    simplified_lhs_rhs_F = simplify_lhs_functional_dependencies(removed_trivial_decomposed_F, incl_transitive_F)
+    simplified_lhs_rhs_F = simplify_lhs_FD(removed_trivial_decomposed_F, incl_transitive_F)
 
 
 
@@ -131,7 +130,7 @@ def get_min_covers(R, F, restrict_to_first_min_cover):
 
 # Using Armstrong Axioms decomposition rule, decompose FD into multiple FDs if right hand-side of FD has multiple attributes
 # Example {{A} -> {B,C}} => {{A} -> {B}, {A} -> {C}}  
-def decompose_functional_dependencies(F):
+def decompose_FD(F):
     decomposed_F = []
 
     for FD in F:
@@ -144,23 +143,23 @@ def decompose_functional_dependencies(F):
     return decomposed_F
 
 # Convert [['A'], ['B', 'C']] => 'A->BC'
-def convert_functional_dependency_list_to_string(FD):
+def convert_FD_list_to_string(FD):
     return ''.join(FD[0]) + '->' + ''.join(FD[1])
 
 # Convert [['A'], ['B', 'C']] => [{'A'}, {'B', 'C'}]
-def convert_functional_dependency_list_to_set(FD):
+def convert_FD_list_to_set(FD):
     return [set(FD[0]), set(FD[1])]
 
 # Convert and sort [{'D', 'A'}, {'C', 'B'}] => [['A', 'D'], ['B', 'C']]
-def convert_functional_dependency_set_to_list(FD):
+def convert_FD_set_to_list(FD):
     return [sorted(list(FD[0])), sorted(list(FD[1]))]
 
 # Find and add transitive functional dependencies to a list of original functional dependencies
-def add_transitive_functional_dependencies(F):
-    added_F = list(map(convert_functional_dependency_list_to_set, F.copy()))
+def add_transitive_FD(F):
+    added_F = list(map(convert_FD_list_to_set, F.copy()))
     
     # Maintain a set of FD strings for quick searching to check if FD is already added
-    set_F = set(list(map(convert_functional_dependency_list_to_string , F)))
+    set_F = set(list(map(convert_FD_list_to_string , F)))
     print('set_F', set_F)
 
     while (True):
@@ -177,13 +176,13 @@ def add_transitive_functional_dependencies(F):
                 # Check if first FD's right hand-side match with another FD's left hand-side to find transitive FD (Armstrong Axioms Transitivity Rule)
                 # But ignore trivial FD
                 if (inner_FD_lhs == FD_rhs and not inner_FD_rhs.issubset(FD_lhs)):
-                    transitive_FD = convert_functional_dependency_set_to_list([FD_lhs, inner_FD_rhs])
-                    transitive_FD_string = convert_functional_dependency_list_to_string(transitive_FD) 
+                    transitive_FD = convert_FD_set_to_list([FD_lhs, inner_FD_rhs])
+                    transitive_FD_string = convert_FD_list_to_string(transitive_FD) 
 
                     # Check if transitive FD is already added previously
                     if (transitive_FD_string not in set_F):
                         # New transitive FD, add to cumulative list and set
-                        added_F.append(convert_functional_dependency_list_to_set(transitive_FD))
+                        added_F.append(convert_FD_list_to_set(transitive_FD))
                         set_F.add(transitive_FD_string)
                         counter += 1
     
@@ -191,18 +190,14 @@ def add_transitive_functional_dependencies(F):
             # No new transitive FD has been added in last round of while loop, stop finding transitive FD
             break;
 
-    #TODO: remove?
-    # Convert FD sets (including additional transitive FDs) back into list that is sorted alphabetically
-    # result_F = list(map(convert_functional_dependency_set_to_list, added_F))
-    result_F = added_F
 
-    return result_F
+    return added_F
 
 
-def remove_trivial_functional_dependencies(F):
+def remove_trivial_FD(F):
     return list(filter(lambda FD: not FD[1].issubset(FD[0]), F))
 
-def simplify_lhs_functional_dependencies(simplified_rhs_F, incl_transitive_F):
+def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F):
     # Store simplified alternative FDs instead of replacing into original list directly
     # This is to find all minimal covers by choosing different alternatives
     # Length correlates to original FD list to replace into original list using index later
@@ -246,9 +241,18 @@ def simplify_lhs_functional_dependencies(simplified_rhs_F, incl_transitive_F):
 
 
              
+def remove_duplicate_FD(F):
+    unique_F = []
+    unique_F_string = set()
 
+    for FD in F:
+        FD_string = convert_FD_list_to_string(FD)
 
+        if (FD_string not in unique_F_string):
+            unique_F.append(FD)
+            unique_F_string.add(FD_string)
 
+    return unique_F
 
 
 
