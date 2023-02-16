@@ -124,6 +124,11 @@ def get_min_covers(R, F, restrict_to_first_min_cover):
     print('========')
     print('many_simplified_lhs_rhs_F', many_simplified_lhs_rhs_F)
 
+    many_removed_duplicate_F = list(map(remove_duplicate_FD, many_simplified_lhs_rhs_F))
+    print('========')
+    print('many_removed_duplicate_F', many_removed_duplicate_F)
+
+
 
 # Using Armstrong Axioms decomposition rule, decompose FD into multiple FDs if right hand-side of FD has multiple attributes
 # Example {{A} -> {B,C}} => {{A} -> {B}, {A} -> {C}}
@@ -201,7 +206,7 @@ def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F, restrict_to_first_min_c
     # There could be 0, or many alternatives for each FD, which will lead to different outcomes of minimal covers
     # Store simplified alternative FDs separately instead of replacing into original list directly
     # This is to find all minimal covers by choosing different alternatives later
-    # Length of simplified_alt correlates to original FD list to replace into original list using same index later
+    # Length of simplified_alt correlates to original FD list, so as to replace into original list using same index later
     # E.g. FD in simplified_alt[2] will replace into simplified_rhs_F[2] afterwards
     simplified_alt = [[] for i in range(len(simplified_rhs_F))]
 
@@ -239,7 +244,10 @@ def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F, restrict_to_first_min_c
                 simplified_alt[FD_index].append(
                     [(FD_lhs - inner_FD_rhs), FD_rhs])
 
-    # TODO: remove duplicate alternative??
+    # Remove duplicated alternatives for each FD
+    print('havent cleaned', simplified_alt)
+    simplified_alt = list(map(remove_duplicate_FD, simplified_alt))
+    print('cleaned simplified_alt dups', simplified_alt)
 
     print('simplify_alt', simplified_alt)
     # Get combinations of alternatives to find all minimal covers
@@ -286,11 +294,12 @@ def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F, restrict_to_first_min_c
         many_F.append(alt_F)
 
     # TODO: remove?
-    print('===========')
+    print('\n====== start many_F ======')
     # print('many_F', many_F)
     for F in many_F:
         print('\n==============\n')
         print(F)
+    print('====== end many_F ======\n')
     # TODO: end remove?
 
     return many_F
