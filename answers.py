@@ -39,17 +39,23 @@ def min_cover(R, FD):
 
 ## Q2b. Return all minimal covers reachable from the functional dependencies of a given schema R and functional dependencies F.
 def min_covers(R, FD):
+    non_empty_F = remove_empty_FD(FD)
+
     '''
     Explain the rationale of the algorithm here.
     '''
-    return []
+    # TODO: add summary of get min covers here
+    return get_min_covers(R, non_empty_F, restrict_to_first_min_cover=False)
 
 ## Q2c. Return all minimal covers of a given schema R and functional dependencies F.
 def all_min_covers(R, FD):
+    # TODO: add summary of get min covers here
     '''
     Explain the rationale of the algorithm here.
     '''
-    return []
+    all_closures_as_FD = all_closures(R, FD)
+
+    return get_min_covers(R, all_closures_as_FD, restrict_to_first_min_cover=False)
 
 ## You can add additional functions below
 
