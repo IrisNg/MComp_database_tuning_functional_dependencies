@@ -20,8 +20,8 @@ def all_closures(R, F):
     non_empty_F = remove_empty_FD(F)
 
     all_closure_attribute_sets = get_subsets_of_attribute_set(R)
-    C = [[sorted(list(closure_attribute_set)), get_one_set_closure(R, non_empty_F, list(
-        closure_attribute_set))] for closure_attribute_set in all_closure_attribute_sets]
+    C = [[closure_attribute_set, get_one_set_closure(
+        R, non_empty_F, closure_attribute_set)] for closure_attribute_set in all_closure_attribute_sets]
 
     filtered_C = remove_non_candidatekey_superkey(R, C)
 
@@ -61,32 +61,35 @@ def remove_empty_FD(F):
     return list(filter(lambda FD: (len(FD[0]) > 0 and len(FD[1]) > 0), F))
 
 
-# Get combinations of subsets for list of attributes
-# Example: get_subsets_of_attribute_set(['A', 'B']) => [{'A'}, {'B'}, {'A', 'B'}]
+# Get all combinations of attribute subsets for S, a list of attributes
+# Example: get_subsets_of_attribute_set(['A', 'B']) => [['A'], ['B'], ['A', 'B']]
 def get_subsets_of_attribute_set(S):
     subsets = []
     for i in range(1, len(S) + 1):
         combinations = itertools.combinations(''.join(S), i)
-        subsets.extend(set(k) for k in combinations)
+        subsets.extend(list(k) for k in combinations)
 
     return subsets
 
 
 def get_one_set_closure(R, F, S):
-    A_set = set(S)
+    # Convert FD in list to set to use set utilities for better performance
+    set_F = [convert_FD_list_to_set(FD) for FD in F.copy()]
+    closure_attributes = set(S)
+
     while (True):
         counter = 0
 
-        for FD in F:
-            if(set(FD[0]).issubset(A_set) and len(set(FD[1]) - A_set) > 0):
-                A_set.update(set(FD[1]) - A_set)
+        for FD in set_F:
+            if(FD[0].issubset(closure_attributes) and len(FD[1] - closure_attributes) > 0):
+                closure_attributes.update(FD[1] - closure_attributes)
                 counter += 1
 
         # if counter == 0, means no more FD could be inferred
-        if ((len(A_set) == len(R)) or (counter == 0)):
+        if ((len(closure_attributes) == len(R)) or (counter == 0)):
             break
 
-    return sorted(list(A_set))
+    return sorted(list(closure_attributes))
 
 
 # C should be a list of closures, sorted from singletons to pairs to triplet etc,
