@@ -31,7 +31,10 @@ def all_closures(R, F):
 def min_cover(R, FD): 
     non_empty_F = remove_empty_FD(FD)
 
-    return get_min_covers(R, non_empty_F, restrict_to_first_min_cover=True)
+    # Returns list of min_covers, extract only one min_cover
+    nested_min_covers = get_min_covers(R, non_empty_F, restrict_to_first_min_cover=True)
+
+    return nested_min_covers[0]
 
 ## Q2b. Return all minimal covers reachable from the functional dependencies of a given schema R and functional dependencies F.
 def min_covers(R, FD):
@@ -106,6 +109,7 @@ def remove_non_candidatekey_superkey(R, C):
 
         # Is superkey
         # Check if subset is already added as candidate_key, if it is, then ignore closure to remove superkey from filtered list
+        # TODO: double check this logic here
         elif (len(candidate_keys) == 0 or any(True for ck in candidate_keys if not ck.issubset(set(closure[0])))):
             filtered_C.append(closure)
             candidate_keys.append(set(closure[0]))
@@ -129,10 +133,17 @@ def get_min_covers(R, F, restrict_to_first_min_cover):
     many_removed_duplicate_F = [remove_duplicate_FD(simplified_F) for simplified_F in many_simplified_lhs_rhs_F]
     print('========')
     print('many_removed_duplicate_F', many_removed_duplicate_F)
-
-    many_min_covers = [remove_transitive_FD(simplified_F) for simplified_F in many_removed_duplicate_F]
+    # TODO: remove duplicated F sets here?
+    # Nested minimal covers list
+    many_min_covers_nested = [remove_transitive_FD(simplified_F) for simplified_F in many_removed_duplicate_F]
+    many_min_covers = [min_cover for many_min_covers_list in many_min_covers_nested for min_cover in many_min_covers_list]
     print('========= many min covers =========', many_min_covers)
-    # TODO: remove duplicated min covers
+
+    # Remove duplicated minimal covers, and convert FD from set back into list
+    many_min_covers_removed_duplicate = remove_duplicate_min_cover(many_min_covers)
+
+    return many_min_covers_removed_duplicate
+
 
 
 # Using Armstrong Axioms decomposition rule, decompose FD into multiple FDs if right hand-side of FD has multiple attributes
@@ -335,6 +346,7 @@ def remove_transitive_FD(F):
     for outer_FD_index, outer_FD in enumerate(F):
         lhs_match = []
         rhs_match = []
+        # TODO: if no match?
 
         for inner_FD_index, inner_FD in enumerate(F):
             # Skip same FD for outer and inner loop
@@ -361,6 +373,7 @@ def remove_transitive_FD(F):
         if (not is_omittable):
             non_omittable_FD.append(outer_FD)
 
+    # TODO: If no omitable?
     print('**********')
     print('omitable', omittable_FD)
     print('non omitable', non_omittable_FD)
@@ -436,7 +449,45 @@ def remove_transitive_FD(F):
     return many_F_filtered_out_removed
 
 
+def remove_duplicate_min_cover(many_min_covers):
+    # Covert each min_cover to a set of string format FD
+    unique_min_covers = []
+    unique_min_covers_set = []
+    
+    print('EEHHHHH')
+    for k in many_min_covers:
+        print('\n-------\n')
+        print(k)
+        print('\n-------\n')
+    print('EEHHHHH')
+    for one_min_cover in many_min_covers:
+        min_cover_set = set(convert_FD_list_to_string(FD) for FD in one_min_cover)
 
+        if (len(unique_min_covers_set) == 0):
+            # Also convert FD from set back to list
+            unique_min_covers.append([convert_FD_set_to_list(FD) for FD in one_min_cover])
+            unique_min_covers_set.append(min_cover_set)
+            continue
+
+        is_duplicate = False
+
+        for unique_min_cover_set in unique_min_covers_set:
+            if (unique_min_cover_set == min_cover_set):
+                is_duplicate = True
+                break
+        
+        if (not is_duplicate):
+            # Also convert FD from set back to list
+            unique_min_covers.append([convert_FD_set_to_list(FD) for FD in one_min_cover])
+            unique_min_covers_set.append(min_cover_set)
+
+    print('WEEEEEEEEEEE')
+    for k in unique_min_covers:
+        print('\n-------\n')
+        print(k)
+        print('\n-------\n')
+    print('WEEEEEEEEEEE')
+    return unique_min_covers
 
     
 
