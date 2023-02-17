@@ -130,6 +130,9 @@ def get_min_covers(R, F, restrict_to_first_min_cover):
     print('========')
     print('many_removed_duplicate_F', many_removed_duplicate_F)
 
+    many_min_covers = [remove_transitive_FD(simplified_F) for simplified_F in many_removed_duplicate_F]
+    print('========= many min covers =========', many_min_covers)
+    # TODO: remove duplicated min covers
 
 
 # Using Armstrong Axioms decomposition rule, decompose FD into multiple FDs if right hand-side of FD has multiple attributes
@@ -319,6 +322,119 @@ def remove_duplicate_FD(F):
             unique_F_string.add(FD_string)
 
     return unique_F
+
+
+def remove_transitive_FD(F):
+    print('remove transitive FD', F)
+
+    omittable_FD = []
+    non_omittable_FD = []
+
+    # Find FD that could be replaced by other FDs using Armstrong Axioms Transitivity Rule
+    # Do not remove omittable FDs from original F yet, find permutations to remove omittable FDs in sequence later as it may affect outcome of minimal cover
+    for outer_FD_index, outer_FD in enumerate(F):
+        lhs_match = []
+        rhs_match = []
+
+        for inner_FD_index, inner_FD in enumerate(F):
+            # Skip same FD for outer and inner loop
+            if (outer_FD_index == inner_FD_index):
+                continue
+
+            if (outer_FD[0] == inner_FD[0]):
+                lhs_match.append(inner_FD)
+
+            if (outer_FD[1] == inner_FD[1]):
+                rhs_match.append(inner_FD)
+
+        is_omittable = False
+        for lhs_match_FD in lhs_match:
+            if (is_omittable):
+                break
+
+            for rhs_match_FD in rhs_match:
+                if (lhs_match_FD[1] == rhs_match_FD[0]):
+                    omittable_FD.append(outer_FD)
+                    is_omittable = True
+                    break
+
+        if (not is_omittable):
+            non_omittable_FD.append(outer_FD)
+
+    print('**********')
+    print('omitable', omittable_FD)
+    print('non omitable', non_omittable_FD)
+    print('**********')
+
+    many_F_with_omittable_rotated = []
+    omittable_ids = ''.join([str(index) for index in range(len(omittable_FD))])
+    print('omittable_ids', omittable_ids)
+    permutations = list(itertools.permutations(
+        omittable_ids, len(omittable_FD)))
+    print('permutations', permutations)
+
+    for permutation in permutations:
+        omittable_permutation = [
+            omittable_FD[int(omittable_index)] for omittable_index in permutation]
+        many_F_with_omittable_rotated.append(
+            [*omittable_permutation, *non_omittable_FD])
+
+    # TODO: remove?
+    print('++++++++++++++++++++++++++++++')
+    for L in many_F_with_omittable_rotated:
+        print('\n ---------------- \n')
+        print(L)
+        print('\n ---------------- \n')
+    print('++++++++++++++++++++++++++++++')
+    # TODO: end remove?
+
+    for rotated_F in many_F_with_omittable_rotated:
+        for outer_FD_index, outer_FD in enumerate(rotated_F):
+            lhs_match = []
+            rhs_match = []
+
+            for inner_FD_index, inner_FD in enumerate(rotated_F):
+                # Skip if inner_FD has been removed in previous outer_FD loop
+                # or skip if same FD for outer and inner loop
+                if (inner_FD is None or outer_FD_index == inner_FD_index):
+                    continue
+
+                if (outer_FD[0] == inner_FD[0]):
+                    lhs_match.append(inner_FD)
+
+                if (outer_FD[1] == inner_FD[1]):
+                    rhs_match.append(inner_FD)
+
+            # If either lhs or rhs has no other FD match, this outer_FD is non omittable
+            if (len(lhs_match) == 0 or len(rhs_match) == 0):
+                continue
+
+            is_outer_FD_removed = False
+            for lhs_match_FD in lhs_match:
+                if (is_outer_FD_removed):
+                    break
+
+                for rhs_match_FD in rhs_match:
+                    if (lhs_match_FD[1] == rhs_match_FD[0]):
+                        # Remove omittable FD from F
+                        # So that it is not usable by the next outer_FD and inner_FD in the next loop
+                        rotated_F[outer_FD_index] = None
+                        is_outer_FD_removed = True
+                        break
+
+    # Remove elements that are None
+    many_F_filtered_out_removed = []
+    for new_F in many_F_with_omittable_rotated:
+        many_F_filtered_out_removed.append(
+            list(filter(lambda FD: FD is not None, new_F)))
+
+    print('\n===========================\n')
+    print('almost final!')
+    print(many_F_filtered_out_removed)
+    print('\n===========================\n')
+
+    return many_F_filtered_out_removed
+
 
 
 
