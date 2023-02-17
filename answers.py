@@ -10,8 +10,6 @@ import itertools
 def student_number():
     return 'A003419B'
 
-
-
 ## Q1a. Determine the closure of a given set of attribute S the schema R and functional dependency F
 def closure(R, F, S):
     non_empty_F = remove_empty_FD(F)
@@ -22,10 +20,8 @@ def all_closures(R, F):
     non_empty_F = remove_empty_FD(F)
 
     all_closure_attribute_sets = get_subsets_of_attribute_set(R)
-    C = []
-    for closure_attribute_set in all_closure_attribute_sets:
-        C.append([sorted(list(closure_attribute_set)), get_one_set_closure(
-            R, non_empty_F, list(closure_attribute_set))])
+    C = [[sorted(list(closure_attribute_set)), get_one_set_closure(R, non_empty_F, list(
+        closure_attribute_set))] for closure_attribute_set in all_closure_attribute_sets]
 
     filtered_C = remove_non_candidatekey_superkey(R, C)
 
@@ -81,13 +77,10 @@ def get_one_set_closure(R, F, S):
     while (True):
         counter = 0
 
-        subsets = get_subsets_of_attribute_set(list(A_set))
-        for subset in subsets:
-            for FD in F:
-                # TODO: change to .issubset()?
-                if (set(FD[0]) == subset and len(set(FD[1]) - A_set) > 0):
-                    A_set.update(set(FD[1]) - A_set)
-                    counter += 1
+        for FD in F:
+            if(set(FD[0]).issubset(A_set) and len(set(FD[1]) - A_set) > 0):
+                A_set.update(set(FD[1]) - A_set)
+                counter += 1
 
         # if counter == 0, means no more FD could be inferred
         if ((len(A_set) == len(R)) or (counter == 0)):
@@ -122,7 +115,7 @@ def get_min_covers(R, F, restrict_to_first_min_cover):
     simplified_rhs_F = decompose_FD(F)
 
     simplified_rhs_F = remove_trivial_FD(
-        list(map(convert_FD_list_to_set, simplified_rhs_F)))
+        [convert_FD_list_to_set(FD) for FD in simplified_rhs_F])
 
     incl_transitive_F = add_transitive_FD(simplified_rhs_F)
 
@@ -130,7 +123,7 @@ def get_min_covers(R, F, restrict_to_first_min_cover):
     print('========')
     print('many_simplified_lhs_rhs_F', many_simplified_lhs_rhs_F)
 
-    many_removed_duplicate_F = list(map(remove_duplicate_FD, many_simplified_lhs_rhs_F))
+    many_removed_duplicate_F = [remove_duplicate_FD(simplified_F) for simplified_F in many_simplified_lhs_rhs_F]
     print('========')
     print('many_removed_duplicate_F', many_removed_duplicate_F)
 
@@ -164,10 +157,10 @@ def convert_FD_set_to_list(FD):
 
 # Find and add transitive functional dependencies to a list of original functional dependencies
 def add_transitive_FD(F):
-    added_F = list(map(convert_FD_list_to_set, F.copy()))
+    added_F = [convert_FD_list_to_set(FD) for FD in F.copy()]
 
     # Maintain a set of FD strings for quick searching to check if FD is already added
-    set_F = set(list(map(convert_FD_list_to_string, F.copy())))
+    set_F = set([convert_FD_list_to_string(FD) for FD in F.copy()])
     print('set_F', set_F)
 
     while (True):
@@ -250,10 +243,12 @@ def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F, restrict_to_first_min_c
                 simplified_alt[FD_index].append(
                     [(FD_lhs - inner_FD_rhs), FD_rhs])
 
-    # Remove duplicated alternatives for each FD
-    print('havent cleaned', simplified_alt)
-    simplified_alt = list(map(remove_duplicate_FD, simplified_alt))
-    print('cleaned simplified_alt dups', simplified_alt)
+
+        # Remove duplicated alternatives
+        print('havent cleaned', simplified_alt[FD_index])
+        simplified_alt[FD_index] = remove_duplicate_FD(simplified_alt[FD_index])
+        print('cleaned dups', simplified_alt[FD_index])
+
 
     print('simplify_alt', simplified_alt)
     # Get combinations of alternatives to find all minimal covers
@@ -265,10 +260,7 @@ def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F, restrict_to_first_min_c
         if (len(alts) == 0):
             continue
 
-        ids = []
-        for alt_index, alt in enumerate(alts):
-            ids.append(str(FD_index) + '-' + str(alt_index))
-
+        ids = [(str(FD_index) + '-' + str(alt_index)) for alt_index, alt in enumerate(alts)]
         simplified_alt_ids.append(ids)
 
     # If all FDs have no alternatives, exit and return only original F passed in as argument
@@ -276,6 +268,7 @@ def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F, restrict_to_first_min_c
         return [simplified_rhs_F]
 
     print('hello', simplified_alt_ids)
+    # Get combinations of alternatives' ids
     all_combination = list(itertools.product(*simplified_alt_ids))
 
     # If mode is set to only get one minimal cover, select only the first combination
