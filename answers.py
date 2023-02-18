@@ -64,14 +64,13 @@ def remove_empty_FD(F):
     return list(filter(lambda FD: (len(FD[0]) > 0 and len(FD[1]) > 0), F))
 
 
-# Get all combinations of attribute subsets for S, a list of attributes
-# Example: get_subsets_of_attribute_set(['A', 'B']) => [['A'], ['B'], ['A', 'B']]
-def get_subsets_of_attribute_set(S):
+# Get all combinations of subsets for a list of attributes
+# Example: get_subset_combination(['A', 'B']) => [['A'], ['B'], ['A', 'B']]
+def get_subset_combination(attribute_list):
     subsets = []
-    for i in range(1, len(S) + 1):
-        combinations = itertools.combinations(''.join(S), i)
-        subsets.extend(list(k) for k in combinations)
-
+    for i in range(1, len(attribute_list) + 1):
+        combinations = itertools.combinations(attribute_list, i)
+        subsets.extend(sorted(list(k)) for k in combinations)
     return subsets
 
 
@@ -489,33 +488,40 @@ def remove_duplicate_min_cover(many_min_covers):
     print('WEEEEEEEEEEE')
     return unique_min_covers
 
-    
 
-# Main functions
-def main():
-    ### Test case from the project
-    R = ['A', 'B', 'C', 'D']
-    FD = [[['A', 'B'], ['C']], [['C'], ['D']]]
 
-    # print(closure(R, FD, ['A']))
-    # print(closure(R, FD, ['A', 'B']))
-    # print(all_closures(R, FD))
+## Main functions
+# def main():
+#     ### Test case from the project
+#     R = ['A', 'B', 'C', 'D']
+#     FD = [[['A', 'B'], ['C']], [['C'], ['D']]]
 
-    R = ['A', 'B', 'C', 'D', 'E', 'F']
-    FD = [[['A'], ['B', 'C']], [['B'], ['C','D']], [['D'], ['B']], [['A','B','E'], ['F']]]
-    print(min_cover(R, FD)) 
+#     print(closure(R, FD, ['A']))
+#     print(closure(R, FD, ['A', 'B']))
+#     print(all_closures(R, FD))
+
+#     R = ['A', 'B', 'C', 'D', 'E', 'F']
+#     FD = [[['A'], ['B', 'C']], [['B'], ['C','D']], [['D'], ['B']], [['A','B','E'], ['F']]]
+#     print(min_cover(R, FD)) 
 
 #     R = ['A', 'B', 'C']
 #     FD = [[['A'], ['B']], [['B'], ['C']], [['C'], ['A']]] 
 #     print(min_covers(R, FD))
 #     print(all_min_covers(R, FD)) 
 
-#     ### Add your own additional test cases if necessary
+    ### Add your own additional test cases if necessary
 
-# def main():
-#     ### Test case from the project
-#     R = ['A', 'B', 'C', 'D', 'E']
-#     FD = [[['A'], ['B']], [['B'], ['C']], [['C'], ['D']], [['D'], ['E']]]
+
+def main():
+
+    print('TESTING...')
+
+    print('============================================')
+    print('get_subset_combination()')
+    get_subset_combination_input = ['A', 'B', 'C', 'D']
+    print('input =', get_subset_combination_input)
+    print(get_subset_combination(get_subset_combination_input))
+    print('============================================\n\n')
 
 #     # print(closure(R, FD, ['A']))
 #     print(all_closures(R, FD))
