@@ -84,13 +84,16 @@ def all_min_covers(R, FD):
 def convert_FD_list_to_string(FD):
     return ''.join(sorted(FD[0])) + '->' + ''.join(sorted(FD[1]))
 
+
 # Convert [['A'], ['B', 'C']] => [{'A'}, {'B', 'C'}]
 def convert_FD_list_to_set(FD):
     return [set(FD[0]), set(FD[1])]
 
+
 # Convert and sort [{'D', 'A'}, {'C', 'B'}] => [['A', 'D'], ['B', 'C']]
 def convert_FD_set_to_list(FD):
     return [sorted(list(FD[0])), sorted(list(FD[1]))]
+
 
 ## Other business logic functions
 #TODO: empty lhs means A can be determined without using any other attribute (so can omit from closure attribute?)
@@ -101,6 +104,7 @@ def convert_FD_set_to_list(FD):
 def remove_empty_FD(F):
     return list(filter(lambda FD: (len(FD[0]) > 0 and len(FD[1]) > 0), F))
 
+
 # Get all combinations of subsets for a list of attributes
 # Example: get_subset_combination(['A', 'B']) => [['A'], ['B'], ['A', 'B']]
 def get_subset_combination(attribute_list):
@@ -109,6 +113,7 @@ def get_subset_combination(attribute_list):
         combinations = itertools.combinations(attribute_list, i)
         subsets.extend(sorted(list(k)) for k in combinations)
     return subsets
+
 
 # Get closure for S, an attribute set represented by a list of attributes
 # R is schema, also represented by a list of attributes in the schema
@@ -144,16 +149,18 @@ def get_one_closure(R, F, S):
 # F, a list of FDs (or FDs decomposed from closure)
 # restrict_to_first_min_cover, a boolean, when set to True, only find one permutation of minimal cover
 def get_min_covers(R, F, restrict_to_first_min_cover):
+    # Convert FDs from 'list' type to 'set' type for better performance
+    converted_F_with_FD_set = [convert_FD_list_to_set(FD) for FD in F.copy()]
+
     # Step 1 - get F': Minimize right hand-side of every functional dependency to attain form X -> {A}
     # 1a. This is done by using Armstrong Axioms Decomposition Rule
     # Example: if one FD = [['A', 'B'], ['C', 'D']], after completing step 1 and decomposed this FD, 
     # we get => [['A', 'B'], ['C']], [['A', 'B'], ['D']] (resulting into 2 FDs)
-    simplified_rhs_F = decompose_FD(F)
+    simplified_rhs_F = decompose_FD(converted_F_with_FD_set)
 
     # 1b. Also remove trivial FDs (which may have been added during 1a. decomposition)
     # Example: this will remove trivial FD = [['A', 'B'], ['A']] and [['A'], ['A']]
-    converted_F_with_FD_set = [convert_FD_list_to_set(FD) for FD in simplified_rhs_F]
-    simplified_rhs_F = remove_trivial_FD(converted_F_with_FD_set)
+    simplified_rhs_F = remove_trivial_FD(simplified_rhs_F)
 
     # Step 2 - get F'': Minimize left hand-side of every functional dependency, 
     # such that for every functional dependency in the form X -> {A} there is no functional dependency Y -> {A} with Y being a proper subset of X
@@ -188,22 +195,26 @@ def get_min_covers(R, F, restrict_to_first_min_cover):
     return many_unique_min_covers
 
 
-
+# F is a list of FDs in 'set' type
+# Returns a new list of FDs, with the addition of found transitive FDs
 # Using Armstrong Axioms decomposition rule, decompose FD into multiple FDs if right hand-side of FD has multiple attributes
-# Example {{A} -> {B,C}} => {{A} -> {B}, {A} -> {C}}
+# Example: [{'A', 'B'}, {'C', 'D'}] => [{'A', 'B'}, {'C'}] and [{'A', 'B'}, {'D'}]
 def decompose_FD(F):
     decomposed_F = []
 
     for FD in F:
-        if (len(FD[1]) == 1):
-            decomposed_F.append(FD)
-        else:
-            for attribute in FD[1]:
-                decomposed_F.append([FD[0], [attribute]])
+        # Append a new FD for every attribute in the rhs
+        for attribute in FD[1]:
+            decomposed_F.append([FD[0], set([attribute])])
 
     return decomposed_F
 
 
+# F is a list of FDs in 'set' type
+# Returns a new list of FDs, excluding the trivial ones
+# Example: this will remove trivial FD = [{'A', 'B'}, {'A'}] and [{'A'}, {'A'}] and [{'A', 'B'}, {'A', 'B'}]
+def remove_trivial_FD(F):
+    return list(filter(lambda FD: not FD[1].issubset(FD[0]), F))
 
 # Find and add transitive functional dependencies to a list of original functional dependencies
 def add_transitive_FD(F):
@@ -246,8 +257,7 @@ def add_transitive_FD(F):
     return added_F
 
 
-def remove_trivial_FD(F):
-    return list(filter(lambda FD: not FD[1].issubset(FD[0]), F))
+
 
 
 def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F, restrict_to_first_min_cover):
@@ -556,7 +566,7 @@ def main():
     print('input =', get_subset_combination_input)
     print('\n')
     print(get_subset_combination(get_subset_combination_input))
-    print('============================================\n\n')
+    print('\n============================================\n\n')
 
     print('============================================')
     print('remove_empty_FD()')
@@ -564,7 +574,23 @@ def main():
     print('input =', remove_empty_FD_input)
     print('\n')
     print(remove_empty_FD(remove_empty_FD_input))
-    print('============================================\n\n')
+    print('\n============================================\n\n')
+
+    print('============================================')
+    print('remove_trivial_FD()')
+    remove_trivial_FD_input = [[{'A', 'B'}, {'C'}], [{'C'}, {'D'}], [{'A'}, {'A'}], [{'A', 'B'}, {'A'}], [{'B', 'D'}, {'B', 'D'}], [{'B', 'E'}, {'B', 'E', 'F'}] ]
+    print('input =', remove_trivial_FD_input)
+    print('\n')
+    print(remove_trivial_FD(remove_trivial_FD_input))
+    print('\n============================================\n\n')
+
+    print('============================================')
+    print('decompose_FD()')
+    decompose_FD_input = [[{'A', 'B'}, {'C', 'D', 'E'}], [{'C'}, {'D'}], [{'A'}, {'B', 'F'}] ]
+    print('input =', decompose_FD_input)
+    print('\n')
+    print(decompose_FD(decompose_FD_input))
+    print('\n============================================\n\n')
 
     print('============================================')
     print('closure()')
@@ -572,7 +598,7 @@ def main():
     print('input =', *closure_input)
     print('\n')
     print(closure(*closure_input))
-    print('============================================\n\n')
+    print('\n============================================\n\n')
 
     print('============================================')
     print('all_closures()')
@@ -580,7 +606,7 @@ def main():
     print('input =', *all_closures_input)
     print('\n')
     print(all_closures(*all_closures_input))
-    print('============================================\n\n')
+    print('\n============================================\n\n')
 
 
 
