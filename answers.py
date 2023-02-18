@@ -77,6 +77,20 @@ def all_min_covers(R, FD):
 
 ## You can add additional functions below
 
+## Data structure conversion helpers for better performance in business logic loops
+# Convert [['A'], ['B', 'C']] => 'A->BC'
+def convert_FD_list_to_string(FD):
+    return ''.join(sorted(FD[0])) + '->' + ''.join(sorted(FD[1]))
+
+# Convert [['A'], ['B', 'C']] => [{'A'}, {'B', 'C'}]
+def convert_FD_list_to_set(FD):
+    return [set(FD[0]), set(FD[1])]
+
+# Convert and sort [{'D', 'A'}, {'C', 'B'}] => [['A', 'D'], ['B', 'C']]
+def convert_FD_set_to_list(FD):
+    return [sorted(list(FD[0])), sorted(list(FD[1]))]
+
+## Other business logic functions
 #TODO: empty lhs means A can be determined without using any other attribute (so can omit from closure attribute?)
 # F is a list of FD
 # FD is the equivalent of a functional dependency, X -> {A}, in the data structure [[X],[A]] where X and A are >= 0 attribute items
@@ -84,7 +98,6 @@ def all_min_covers(R, FD):
 # Example: remove_empty_FD([[['A', 'B'], ['C']], [['A'], []]]) => [[['A', 'B'], ['C']]] 
 def remove_empty_FD(F):
     return list(filter(lambda FD: (len(FD[0]) > 0 and len(FD[1]) > 0), F))
-
 
 # Get all combinations of subsets for a list of attributes
 # Example: get_subset_combination(['A', 'B']) => [['A'], ['B'], ['A', 'B']]
@@ -95,25 +108,34 @@ def get_subset_combination(attribute_list):
         subsets.extend(sorted(list(k)) for k in combinations)
     return subsets
 
-
+# Get closure for S, an attribute set represented by a list of attributes
+# R is schema, also represented by a list of attributes in the schema
+# F is a list of functional dependencies
+# Returns a sorted list of attributes functionally determined by S
 def get_one_closure(R, F, S):
-    # Convert FD in list to set to use set utilities for better performance
-    set_F = [convert_FD_list_to_set(FD) for FD in F.copy()]
-    closure_attributes = set(S)
+    # Convert FD in list to set to use Python set utilities (e.g .issubset()) for better performance
+    F_set = [convert_FD_list_to_set(FD) for FD in F.copy()]
+    # By Armstrong Axioms Reflexivity Rule, each attribute in S functionally determines itself
+    determined_attributes = set(S)
 
     while (True):
         counter = 0
 
-        for FD in set_F:
-            if(FD[0].issubset(closure_attributes) and len(FD[1] - closure_attributes) > 0):
-                closure_attributes.update(FD[1] - closure_attributes)
+        for FD in F_set:
+            # With a combination of Armstrong Axioms Decomposition, Union, and Transitivity Rule
+            # Any FD with left hand-side a subset of the current determined_attributes, means FD right hand-side can be determined by S
+            # Example: if S = ['A', 'B'], determined_attributes = {'A', 'B', 'C'}, and FD = [['B', 'C'], ['D']]
+            # Since AB -> B, AB -> C, by union rule, AB -> BC. By transitivity rule, AB -> BC and BC -> D => AB -> D
+            # Thus 'D' can then be added into determined_attributes set, and other attributes (in FD with 'D' as a subset of left hand-side) can be inferred in the next loop
+            if(FD[0].issubset(determined_attributes) and len(FD[1] - determined_attributes) > 0):
+                determined_attributes.update(FD[1] - determined_attributes)
                 counter += 1
 
-        # if counter == 0, means no more FD could be inferred
-        if ((len(closure_attributes) == len(R)) or (counter == 0)):
+        # if counter == 0, means no more FD could be inferred, so break out of loop to stop inferring
+        if ((len(determined_attributes) == len(R)) or (counter == 0)):
             break
 
-    return sorted(list(closure_attributes))
+    return sorted(list(determined_attributes))
 
 
 
@@ -160,17 +182,7 @@ def decompose_FD(F):
 
     return decomposed_F
 
-# Convert [['A'], ['B', 'C']] => 'A->BC'
-def convert_FD_list_to_string(FD):
-    return ''.join(sorted(FD[0])) + '->' + ''.join(sorted(FD[1]))
 
-# Convert [['A'], ['B', 'C']] => [{'A'}, {'B', 'C'}]
-def convert_FD_list_to_set(FD):
-    return [set(FD[0]), set(FD[1])]
-
-# Convert and sort [{'D', 'A'}, {'C', 'B'}] => [['A', 'D'], ['B', 'C']]
-def convert_FD_set_to_list(FD):
-    return [sorted(list(FD[0])), sorted(list(FD[1]))]
 
 # Find and add transitive functional dependencies to a list of original functional dependencies
 def add_transitive_FD(F):
@@ -521,11 +533,34 @@ def main():
     print('get_subset_combination()')
     get_subset_combination_input = ['A', 'B', 'C', 'D']
     print('input =', get_subset_combination_input)
+    print('\n')
     print(get_subset_combination(get_subset_combination_input))
     print('============================================\n\n')
 
-#     # print(closure(R, FD, ['A']))
-#     print(all_closures(R, FD))
+    print('============================================')
+    print('remove_empty_FD()')
+    remove_empty_FD_input = [[['A', 'B'], ['C']], [['C'], ['D']], [[], ['A']], [['B'], []] ]
+    print('input =', remove_empty_FD_input)
+    print('\n')
+    print(remove_empty_FD(remove_empty_FD_input))
+    print('============================================\n\n')
+
+    print('============================================')
+    print('closure()')
+    closure_input = [['A', 'B', 'C', 'D'], [[['A', 'B'], ['C']], [['C'], ['D']], [[], ['A']], [['B'], []]], ['A', 'B']]
+    print('input =', *closure_input)
+    print('\n')
+    print(closure(*closure_input))
+    print('============================================\n\n')
+
+    print('============================================')
+    print('all_closures()')
+    all_closures_input = [['A', 'B', 'C', 'D'], [[['A', 'B'], ['C']], [['C'], ['D']], [[], ['A']], [['B'], []]]]
+    print('input =', *all_closures_input)
+    print('\n')
+    print(all_closures(*all_closures_input))
+    print('============================================\n\n')
+
 
 
 
