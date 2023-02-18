@@ -33,7 +33,7 @@ def all_closures(R, F):
         # Skip finding closure if there is already a smaller subset of closure_attribute_set that is candidate key
         # because in that scenario, closure_attribute_set will be a superkey that is not candidate key
         # and we want to omit superkeys that are not candidate keys per the requirements
-        if len(candidate_keys) > 0 and any(True if ck.issubset(set(closure_attribute_set)) else False for ck in candidate_keys):
+        if (len(candidate_keys) > 0) and any(True if ck.issubset(set(closure_attribute_set)) else False for ck in candidate_keys):
             continue
             
         calculated_closure = get_one_closure(R, non_empty_F, closure_attribute_set)
@@ -134,12 +134,12 @@ def get_one_closure(R, F, S):
             # Example: if S = ['A', 'B'], determined_attributes = {'A', 'B', 'C'}, and FD = [['B', 'C'], ['D']]
             # Since AB -> B, AB -> C, by union rule, AB -> BC. By transitivity rule, AB -> BC and BC -> D => AB -> D
             # Thus 'D' can then be added into determined_attributes set, and other attributes (in FD with 'D' as a subset of left hand-side) can be inferred in the next loop
-            if(FD[0].issubset(determined_attributes) and len(FD[1] - determined_attributes) > 0):
+            if FD[0].issubset(determined_attributes) and (len(FD[1] - determined_attributes) > 0):
                 determined_attributes.update(FD[1] - determined_attributes)
                 counter += 1
 
         # if counter == 0, means no more FD could be inferred, so break out of loop to stop inferring
-        if ((len(determined_attributes) == len(R)) or (counter == 0)):
+        if (len(determined_attributes) == len(R)) or (counter == 0):
             break
 
     return sorted(list(determined_attributes))
@@ -168,7 +168,7 @@ def get_min_covers(R, F, restrict_to_first_min_cover):
     # Found transitive FDs could be used to replace FDs with superset left hand-side later
     incl_transitive_F = add_transitive_FD(simplified_rhs_F)
 
-    # 2b. Replace FDs with superset left hand-side with transitive FDs that is its subset on left hand-side
+    # 2b. Replace FDs having superset left hand-side with transitive FDs that is its subset on left hand-side
     # Example: original FD = [['A', 'B'], ['C']] could be replaced with simpler FD [['A'], ['C']]
     # Also remove attribute from left hand-side if there is any FD implying a subset of lhs determines another subset of lhs
     # Example: original FD = [['A', 'B'], ['C']], another FD = [['A'], ['B']], this could be simplified to [['A'], ['C']]
@@ -216,48 +216,46 @@ def decompose_FD(F):
 def remove_trivial_FD(F):
     return list(filter(lambda FD: not FD[1].issubset(FD[0]), F))
 
-# Find and add transitive functional dependencies to a list of original functional dependencies
+
+# F is a list of FDs in 'set' type
+# Returns a new list of FDs, with the addition of found transitive FDs, inferred using Armstrong Axioms Transitivity Rule
+# Example: if F contains FDs [{'A'}, {'B'}] and [{'B'}, {'C'}], add new FD [{'A'}, {'C'}] to resulting list 
 def add_transitive_FD(F):
-    added_F = [convert_FD_list_to_set(FD) for FD in F.copy()]
+    incl_transitive_F = F.copy()
 
     # Maintain a set of FD strings for quick searching to check if FD is already added
-    set_F = set([convert_FD_list_to_string(FD) for FD in F.copy()])
-    print('set_F', set_F)
+    unique_F_string_set = set([convert_FD_list_to_string(FD) for FD in F.copy()])
 
-    while (True):
+    # Infer transitive FD from original F and added transitive FDs continuously, until loop is broken when no more FD can be inferred
+    while True:
         counter = 0
 
-        for FD in added_F:
-            FD_lhs = FD[0]
-            FD_rhs = FD[1]
+        for outer_FD in incl_transitive_F:
+            outer_FD_lhs, outer_FD_rhs = outer_FD
 
-            for inner_FD in added_F:
-                inner_FD_lhs = inner_FD[0]
-                inner_FD_rhs = inner_FD[1]
+            for inner_FD in incl_transitive_F:
+                inner_FD_lhs, inner_FD_rhs = inner_FD
 
-                # Check if first FD's right hand-side match with another FD's left hand-side to find transitive FD (Armstrong Axioms Transitivity Rule)
+                # Check if outer FD's right hand-side matches with inner FD's left hand-side to find transitive FD (Armstrong Axioms Transitivity Rule)
                 # But ignore trivial FD
-                if (inner_FD_lhs == FD_rhs and not inner_FD_rhs.issubset(FD_lhs)):
+                if inner_FD_lhs == outer_FD_rhs and not inner_FD_rhs.issubset(outer_FD_lhs):
                     transitive_FD = convert_FD_set_to_list(
-                        [FD_lhs, inner_FD_rhs])
+                        [outer_FD_lhs, inner_FD_rhs])
                     transitive_FD_string = convert_FD_list_to_string(
                         transitive_FD)
 
                     # Check if transitive FD is already added previously
-                    if (transitive_FD_string not in set_F):
+                    if transitive_FD_string not in unique_F_string_set:
                         # New transitive FD, add to cumulative list and set
-                        added_F.append(convert_FD_list_to_set(transitive_FD))
-                        set_F.add(transitive_FD_string)
+                        incl_transitive_F.append(convert_FD_list_to_set(transitive_FD))
+                        unique_F_string_set.add(transitive_FD_string)
                         counter += 1
 
-        if (counter == 0):
+        if counter == 0:
             # No new transitive FD has been added in last round of while loop, stop finding transitive FD
             break
 
-    return added_F
-
-
-
+    return incl_transitive_F
 
 
 def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F, restrict_to_first_min_cover):
@@ -269,21 +267,19 @@ def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F, restrict_to_first_min_c
     # E.g. FD in simplified_alt[2] will replace into simplified_rhs_F[2] afterwards
     simplified_alt = [[] for i in range(len(simplified_rhs_F))]
 
-    for FD_index, FD in enumerate(simplified_rhs_F):
-        FD_lhs = FD[0]
-        FD_rhs = FD[1]
+    for FD_index, outer_FD in enumerate(simplified_rhs_F):
+        outer_FD_lhs, outer_FD_rhs = outer_FD
 
         # If left hand-side is already simplified to 1 attribute, then skip
-        if (len(FD_lhs) == 1):
+        if (len(outer_FD_lhs) == 1):
             continue
 
         for inner_FD in incl_transitive_F:
-            inner_FD_lhs = inner_FD[0]
-            inner_FD_rhs = inner_FD[1]
+            inner_FD_lhs, inner_FD_rhs = inner_FD
 
             # We want to replace left hand-side of outer FD with smaller subset
             # If inner FD left hand-side is equal or greater than outer FD lhs in length, then skip
-            if (len(inner_FD_lhs) == len(FD_lhs)):
+            if (len(inner_FD_lhs) == len(outer_FD_lhs)):
                 break
 
             alt = simplified_alt[FD_index]
@@ -291,7 +287,7 @@ def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F, restrict_to_first_min_c
             # Simplification scenario 1:
             # outer FD rhs = inner FD rhs, AND inner FD lhs is a smaller subset of outer FD lhs
             # AND inner FD lhs has same number of attributes as any previously added alternatives, not more, otherwise it will not be minimal
-            if (FD_rhs == inner_FD_rhs and inner_FD_lhs.issubset(FD_lhs) and (len(alt) == 0 or len(inner_FD_lhs) == len(alt[0][0]))):
+            if (outer_FD_rhs == inner_FD_rhs and inner_FD_lhs.issubset(outer_FD_lhs) and (len(alt) == 0 or len(inner_FD_lhs) == len(alt[0][0]))):
                 simplified_alt[FD_index].append(inner_FD)
                 continue
 
@@ -299,12 +295,12 @@ def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F, restrict_to_first_min_c
             # Using Armstrong Axioms Transitivity Rule, inner FD implies that a subset of outer FD lhs functionally determines another subset of outer FD lhs
             # Example - outer FD = {A, B} -> {C}, and inner FD = {A} -> {B}, then outer FD can be replaced with {A} -> {C}
             # AND lhs of FD to add, has same number of attributes as any previously added alternatives, not more, otherwise it will not be minimal
-            if (inner_FD_lhs.issubset(FD_lhs) and inner_FD_rhs.issubset(FD_lhs - inner_FD_lhs) and (len(alt) == 0 or len(FD_lhs - inner_FD_rhs) == len(alt[0][0]))):
+            if (inner_FD_lhs.issubset(outer_FD_lhs) and inner_FD_rhs.issubset(outer_FD_lhs - inner_FD_lhs) and (len(alt) == 0 or len(outer_FD_lhs - inner_FD_rhs) == len(alt[0][0]))):
                 simplified_alt[FD_index].append(
-                    [(FD_lhs - inner_FD_rhs), FD_rhs])
+                    [(outer_FD_lhs - inner_FD_rhs), outer_FD_rhs])
 
 
-        # Remove duplicated alternatives
+        # Remove duplicated alternatives now, else it will lead to many more unnecessary permutated outcomes later
         print('havent cleaned', simplified_alt[FD_index])
         simplified_alt[FD_index] = remove_duplicate_FD(simplified_alt[FD_index])
         print('cleaned dups', simplified_alt[FD_index])
@@ -590,6 +586,14 @@ def main():
     print('input =', decompose_FD_input)
     print('\n')
     print(decompose_FD(decompose_FD_input))
+    print('\n============================================\n\n')
+
+    print('============================================')
+    print('add_transitive_FD()')
+    add_transitive_FD_input = [[{'A', 'B'}, {'C'}], [{'C'}, {'D'}], [{'D'}, { 'E'}], [{'B'}, {'D'}] ]
+    print('input =', add_transitive_FD_input)
+    print('\n')
+    print(add_transitive_FD(add_transitive_FD_input))
     print('\n============================================\n\n')
 
     print('============================================')
