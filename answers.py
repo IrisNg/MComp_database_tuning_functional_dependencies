@@ -178,25 +178,26 @@ def get_min_covers(R, F, restrict_to_first_min_cover):
 
     # Step 3 - get F''': Minimize the set, such that none of the FD can be derived from other FDs
     # 3a. Remove duplicated FDs within each simplified F
+    # And remove duplicated F (with exact same FDs across more than one F), this will prevent performance issue in next step when number of permutations increase further
     many_simplified_lhs_rhs_F = [remove_duplicate_FD(simplified_F) for simplified_F in many_simplified_lhs_rhs_F]
+    many_simplified_lhs_rhs_F = remove_duplicate_F(many_simplified_lhs_rhs_F, is_convert_FD_to_list = False)
 
     # 3b. Remove transitive FDs within each simplified F that can be derived using Armstrong Axioms Transitivity Rule from other FDs
     # As we can reach different minimal cover outcome based on which transitive FD is removed first,
     # we find permutations and rotate the order of removable transitive FD within F itself, before removing transitive FD sequentially 
     # This will result in even more sets of min_covers, nested in the list of permutations from 2b 
-    # TODO: remove duplicated F sets here?
     many_min_covers_nested = [remove_transitive_FD(simplified_F) for simplified_F in many_simplified_lhs_rhs_F]
     # Flatten nested list from 3b and 2b into a list of min_cover
     many_min_covers = [min_cover for many_min_covers_list in many_min_covers_nested for min_cover in many_min_covers_list]
 
     # Remove duplicated minimal covers, and convert FD from set back into list
-    many_unique_min_covers = remove_duplicate_min_cover(many_min_covers)
+    many_unique_min_covers = remove_duplicate_F(many_min_covers, is_convert_FD_to_list = True)
 
     return many_unique_min_covers
 
 
 # F is a list of FDs in 'set' type
-# Returns a new list of FDs, with the addition of found transitive FDs
+# Returns a new list of FDs, with the addition of decomposed FDs
 # Using Armstrong Axioms decomposition rule, decompose FD into multiple FDs if right hand-side of FD has multiple attributes
 # Example: [{'A', 'B'}, {'C', 'D'}] => [{'A', 'B'}, {'C'}] and [{'A', 'B'}, {'D'}]
 def decompose_FD(F):
@@ -360,16 +361,18 @@ def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F, restrict_to_first_min_c
     return many_F
 
 
+# F is a list of FDs in 'set' or 'list' type
+# Returns a new list of FDs, excluding those that are duplicates (left hand-side and right hand-side matches with another FD)
 def remove_duplicate_FD(F):
     unique_F = []
-    unique_F_string = set()
+    unique_F_string_set = set()
 
     for FD in F:
-        FD_string = convert_FD_list_to_string(FD)
+        FD_string = convert_FD_list_to_string(convert_FD_set_to_list(FD))
 
-        if (FD_string not in unique_F_string):
+        if FD_string not in unique_F_string_set:
             unique_F.append(FD)
-            unique_F_string.add(FD_string)
+            unique_F_string_set.add(FD_string)
 
     return unique_F
 
@@ -488,45 +491,29 @@ def remove_transitive_FD(F):
     return many_F_filtered_out_removed
 
 
-def remove_duplicate_min_cover(many_min_covers):
-    # Covert each min_cover to a set of string format FD
-    unique_min_covers = []
-    unique_min_covers_set = []
+# many_F takes in a list of F, containing FDs in 'set' or 'list' type
+# Returns a list of F that are unique (all FDs in each F do not match all FDs of another F)
+def remove_duplicate_F(many_F, is_convert_FD_to_list=False):
+    many_unique_F = []
+    # Store each unique F as set of FD strings, to compare uniqueness of FD set more performantly
+    many_unique_F_set = [] # Example: [{'AB->C', 'D->E'}, {'B->D', 'CD->E'}]
     
-    print('EEHHHHH')
-    for k in many_min_covers:
-        print('\n-------\n')
-        print(k)
-        print('\n-------\n')
-    print('EEHHHHH')
-    for one_min_cover in many_min_covers:
-        min_cover_set = set(convert_FD_list_to_string(FD) for FD in one_min_cover)
+    # Loop through each F to check for uniqueness
+    for F in many_F:
+        F_set = set(convert_FD_list_to_string(convert_FD_set_to_list(FD)) for FD in F)
 
-        if (len(unique_min_covers_set) == 0):
-            # Also convert FD from set back to list
-            unique_min_covers.append([convert_FD_set_to_list(FD) for FD in one_min_cover])
-            unique_min_covers_set.append(min_cover_set)
-            continue
+        # If current loop is a unique F, it will not exactly match FDs with any previously added unique F
+        if (len(many_unique_F_set) == 0) or all(True if unique_F_set != F_set else False for unique_F_set in many_unique_F_set):
+            # this F is unique, add to unique list
+            if is_convert_FD_to_list is True:
+                # Also convert FD from set back to list
+                many_unique_F.append([convert_FD_set_to_list(FD) for FD in F])
+            else:
+                many_unique_F.append(F)
 
-        is_duplicate = False
+            many_unique_F_set.append(F_set)
 
-        for unique_min_cover_set in unique_min_covers_set:
-            if (unique_min_cover_set == min_cover_set):
-                is_duplicate = True
-                break
-        
-        if (not is_duplicate):
-            # Also convert FD from set back to list
-            unique_min_covers.append([convert_FD_set_to_list(FD) for FD in one_min_cover])
-            unique_min_covers_set.append(min_cover_set)
-
-    print('WEEEEEEEEEEE')
-    for k in unique_min_covers:
-        print('\n-------\n')
-        print(k)
-        print('\n-------\n')
-    print('WEEEEEEEEEEE')
-    return unique_min_covers
+    return many_unique_F
 
 
 
@@ -594,6 +581,33 @@ def main():
     print('input =', add_transitive_FD_input)
     print('\n')
     print(add_transitive_FD(add_transitive_FD_input))
+    print('\n============================================\n\n')
+    
+    print('============================================')
+    print('remove_duplicate_FD()')
+    remove_duplicate_FD_input = [[{'A', 'B'}, {'C', 'D', 'E'}], [{'C'}, {'D'}], [{'A'}, {'B', 'F'}], [{'B', 'A'}, {'E', 'D', 'C'}], [{'C'}, {'D'}] ]
+    print('input =', remove_duplicate_FD_input)
+    print('\n')
+    print(remove_duplicate_FD(remove_duplicate_FD_input))
+    print('\n============================================\n\n')
+
+    print('============================================')
+    print('remove_duplicate_F()')
+    remove_duplicate_F_input = [
+        [[{'A'}, {'C'}], [{'B', 'A'}, {'A'}], [{'C'}, {'A'}], [{'A'}, {'B'}]], 
+        [[{'B'}, {'C'}], [{'C'}, {'A'}], [{'A'}, {'B'}]], 
+        [[{'C'}, {'B'}], [{'A'}, {'C'}], [{'C'}, {'A'}], [{'B'}, {'C'}]], 
+        [[{'C'}, {'B'}], [{'A', 'D'}, {'C'}], [{'B'}, {'A'}]], 
+        [[{'B'}, {'C'}], [{'A'}, {'B'}], [{'B'}, {'A'}], [{'C'}, {'B'}]], 
+        [[{'A'}, {'C'}], [{'A'}, {'B'}], [{'C'}, {'A'}], [{'B', 'A'}, {'A'}]],  
+        [[{'C'}, {'B'}], [{'A', 'D'}, {'C'}], [{'B'}, {'A'}]]
+    ]
+    print('input =', remove_duplicate_F_input)
+    print('\n convert to list')
+    print(remove_duplicate_F(remove_duplicate_F_input, is_convert_FD_to_list=True))
+    print('\n remain as set')
+    print(remove_duplicate_F(remove_duplicate_F_input, is_convert_FD_to_list=False))
+    print('\n')
     print('\n============================================\n\n')
 
     print('============================================')
