@@ -13,19 +13,38 @@ def student_number():
 ## Q1a. Determine the closure of a given set of attribute S the schema R and functional dependency F
 def closure(R, F, S):
     non_empty_F = remove_empty_FD(F)
-    return get_one_set_closure(R, non_empty_F, S)
+    return get_one_closure(R, non_empty_F, S)
 
 ## Q1b. Determine all attribute closures excluding superkeys that are not candidate keys given the schema R and functional dependency F
 def all_closures(R, F): 
     non_empty_F = remove_empty_FD(F)
 
-    all_closure_attribute_sets = get_subsets_of_attribute_set(R)
-    C = [[closure_attribute_set, get_one_set_closure(
-        R, non_empty_F, closure_attribute_set)] for closure_attribute_set in all_closure_attribute_sets]
+    # Get all combinations of closure attribute sets
+    # Should return combinations sorted from singletons to pairs to triplets
+    # Else loop algorithm below will not be able to find candidate keys in earlier loops before skipping superkeys that are not candidate keys in later loops
+    # Example: if R = ['A', 'B'] => the closures to find are [['A'], ['B'], ['A', 'B']]
+    all_closure_attribute_sets = get_subset_combination(R)
 
-    filtered_C = remove_non_candidatekey_superkey(R, C)
+    # Find closure of each closure_attribute_set one by one
+    num_schema_attributes = len(R)
+    candidate_keys = [] # Example: [{'C'}, {'A', 'B'}]
+    closures_without_non_candidatekey_superkey = []
 
-    return filtered_C
+    for closure_attribute_set in all_closure_attribute_sets:
+        # Skip finding closure if there is already a smaller subset of closure_attribute_set that is candidate key
+        # because in that scenario, closure_attribute_set will be a superkey that is not candidate key
+        # and we want to omit superkeys that are not candidate keys per the requirements
+        if len(candidate_keys) > 0 and any(True if ck.issubset(set(closure_attribute_set)) else False for ck in candidate_keys):
+            continue
+            
+        calculated_closure = get_one_closure(R, non_empty_F, closure_attribute_set)
+        closures_without_non_candidatekey_superkey.append([closure_attribute_set, calculated_closure])
+
+        if len(calculated_closure) == num_schema_attributes:
+            # Superkey AND Candidate key, as all attributes of R are functionally dependent on this closure_attribute_set
+            candidate_keys.append(set(closure_attribute_set))
+
+    return closures_without_non_candidatekey_superkey
     
 ## Q2a. Return a minimal cover of the functional dependencies of a given schema R and functional dependencies F.
 def min_cover(R, FD): 
@@ -58,8 +77,11 @@ def all_min_covers(R, FD):
 
 ## You can add additional functions below
 
-# Let FD be X -> {A}
-# Remove functional dependencies with empty X or empty A
+#TODO: empty lhs means A can be determined without using any other attribute (so can omit from closure attribute?)
+# F is a list of FD
+# FD is the equivalent of a functional dependency, X -> {A}, in the data structure [[X],[A]] where X and A are >= 0 attribute items
+# Remove FD with empty X or empty A
+# Example: remove_empty_FD([[['A', 'B'], ['C']], [['A'], []]]) => [[['A', 'B'], ['C']]] 
 def remove_empty_FD(F):
     return list(filter(lambda FD: (len(FD[0]) > 0 and len(FD[1]) > 0), F))
 
@@ -74,7 +96,7 @@ def get_subset_combination(attribute_list):
     return subsets
 
 
-def get_one_set_closure(R, F, S):
+def get_one_closure(R, F, S):
     # Convert FD in list to set to use set utilities for better performance
     set_F = [convert_FD_list_to_set(FD) for FD in F.copy()]
     closure_attributes = set(S)
@@ -93,27 +115,6 @@ def get_one_set_closure(R, F, S):
 
     return sorted(list(closure_attributes))
 
-
-# C should be a list of closures, sorted from singletons to pairs to triplet etc,
-# else algorithm will not be able to find candidate keys in earlier loops before finding superkeys that are not candidate keys in later loops
-def remove_non_candidatekey_superkey(R, C):
-    num_schema_attributes = len(R)
-    candidate_keys = []
-    filtered_C = []
-
-    for closure in C:
-        # Not superkey, add closure to filtered list
-        if (len(closure[1]) != num_schema_attributes):
-            filtered_C.append(closure)
-
-        # Is superkey
-        # Check if subset is already added as candidate_key, if it is, then ignore closure to remove superkey from filtered list
-        # TODO: double check this logic here
-        elif (len(candidate_keys) == 0 or any(True for ck in candidate_keys if not ck.issubset(set(closure[0])))):
-            filtered_C.append(closure)
-            candidate_keys.append(set(closure[0]))
-
-    return filtered_C
 
 
 def get_min_covers(R, F, restrict_to_first_min_cover):
