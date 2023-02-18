@@ -3,7 +3,6 @@
 ###########################################################################
 
 ## If you need to import library put it below
-
 import itertools
 
 ## Change the function below with your student number.
@@ -50,7 +49,9 @@ def all_closures(R, F):
 def min_cover(R, FD): 
     non_empty_F = remove_empty_FD(FD)
 
-    # Returns list of min_covers, extract only one min_cover
+    # Returns nested list of one minimal cover (to reuse get_min_covers() for min_covers and all_min_covers questions)
+    # Extract only the first mininmal cover from nested list
+    # restrict_to_first_min_cover=True prevents get_min_covers (and its sub functions) from finding more than one permutation, which improves performance when getting only one minimal cover
     nested_min_covers = get_min_covers(R, non_empty_F, restrict_to_first_min_cover=True)
 
     return nested_min_covers[0]
@@ -61,8 +62,9 @@ def min_covers(R, FD):
 
     '''
     Explain the rationale of the algorithm here.
+    Ans: Sorry, please refer to comments in get_min_covers() ancillary function instead, since the logic is reused for all 3 parts of Q2
     '''
-    # TODO: add summary of get min covers here
+
     return get_min_covers(R, non_empty_F, restrict_to_first_min_cover=False)
 
 ## Q2c. Return all minimal covers of a given schema R and functional dependencies F.
@@ -138,33 +140,52 @@ def get_one_closure(R, F, S):
     return sorted(list(determined_attributes))
 
 
-
+# Get a list of minimal covers, based on
+# F, a list of FDs (or FDs decomposed from closure)
+# restrict_to_first_min_cover, a boolean, when set to True, only find one permutation of minimal cover
 def get_min_covers(R, F, restrict_to_first_min_cover):
     # Step 1 - get F': Minimize right hand-side of every functional dependency to attain form X -> {A}
+    # 1a. This is done by using Armstrong Axioms Decomposition Rule
+    # Example: if one FD = [['A', 'B'], ['C', 'D']], after completing step 1 and decomposed this FD, 
+    # we get => [['A', 'B'], ['C']], [['A', 'B'], ['D']] (resulting into 2 FDs)
     simplified_rhs_F = decompose_FD(F)
 
-    simplified_rhs_F = remove_trivial_FD(
-        [convert_FD_list_to_set(FD) for FD in simplified_rhs_F])
+    # 1b. Also remove trivial FDs (which may have been added during 1a. decomposition)
+    # Example: this will remove trivial FD = [['A', 'B'], ['A']] and [['A'], ['A']]
+    converted_F_with_FD_set = [convert_FD_list_to_set(FD) for FD in simplified_rhs_F]
+    simplified_rhs_F = remove_trivial_FD(converted_F_with_FD_set)
 
+    # Step 2 - get F'': Minimize left hand-side of every functional dependency, 
+    # such that for every functional dependency in the form X -> {A} there is no functional dependency Y -> {A} with Y being a proper subset of X
+    # 2a. Infer additional transitive FDs using Armstrong Axioms Transitivity Rule
+    # Found transitive FDs could be used to replace FDs with superset left hand-side later
     incl_transitive_F = add_transitive_FD(simplified_rhs_F)
 
+    # 2b. Replace FDs with superset left hand-side with transitive FDs that is its subset on left hand-side
+    # Example: original FD = [['A', 'B'], ['C']] could be replaced with simpler FD [['A'], ['C']]
+    # Also remove attribute from left hand-side if there is any FD implying a subset of lhs determines another subset of lhs
+    # Example: original FD = [['A', 'B'], ['C']], another FD = [['A'], ['B']], this could be simplified to [['A'], ['C']]
+    # As each FD can be replaced by one or more simpler FD (resulting in different minimal cover outcome),
+    # return many permutations (a list) of simplified F based on each replacement possibility, product of possibilities with other replaceable FDs
     many_simplified_lhs_rhs_F = simplify_lhs_FD(simplified_rhs_F, incl_transitive_F, restrict_to_first_min_cover)
-    print('========')
-    print('many_simplified_lhs_rhs_F', many_simplified_lhs_rhs_F)
 
-    many_removed_duplicate_F = [remove_duplicate_FD(simplified_F) for simplified_F in many_simplified_lhs_rhs_F]
-    print('========')
-    print('many_removed_duplicate_F', many_removed_duplicate_F)
+    # Step 3 - get F''': Minimize the set, such that none of the FD can be derived from other FDs
+    # 3a. Remove duplicated FDs within each simplified F
+    many_simplified_lhs_rhs_F = [remove_duplicate_FD(simplified_F) for simplified_F in many_simplified_lhs_rhs_F]
+
+    # 3b. Remove transitive FDs within each simplified F that can be derived using Armstrong Axioms Transitivity Rule from other FDs
+    # As we can reach different minimal cover outcome based on which transitive FD is removed first,
+    # we find permutations and rotate the order of removable transitive FD within F itself, before removing transitive FD sequentially 
+    # This will result in even more sets of min_covers, nested in the list of permutations from 2b 
     # TODO: remove duplicated F sets here?
-    # Nested minimal covers list
-    many_min_covers_nested = [remove_transitive_FD(simplified_F) for simplified_F in many_removed_duplicate_F]
+    many_min_covers_nested = [remove_transitive_FD(simplified_F) for simplified_F in many_simplified_lhs_rhs_F]
+    # Flatten nested list from 3b and 2b into a list of min_cover
     many_min_covers = [min_cover for many_min_covers_list in many_min_covers_nested for min_cover in many_min_covers_list]
-    print('========= many min covers =========', many_min_covers)
 
     # Remove duplicated minimal covers, and convert FD from set back into list
-    many_min_covers_removed_duplicate = remove_duplicate_min_cover(many_min_covers)
+    many_unique_min_covers = remove_duplicate_min_cover(many_min_covers)
 
-    return many_min_covers_removed_duplicate
+    return many_unique_min_covers
 
 
 
