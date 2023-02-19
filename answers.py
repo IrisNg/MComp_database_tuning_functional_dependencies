@@ -258,105 +258,98 @@ def add_transitive_FD(F):
 
     return incl_transitive_F
 
-
-def simplify_lhs_FD(simplified_rhs_F, incl_transitive_F, restrict_to_first_min_cover):
-    # simplified_alt is a list of simplified alternative left hand-side for each FD
+# simplified_F and incl_transitive_F are both a list of FDs in 'set' type
+# however incl_transitive_F should include additional transitive FDs compared to simplified_F 
+# incl_transitive_F will be used during the simplication process to look for alternative FDs with minimal left hand-side
+# When restrict_to_first_min_cover = True, algorithm will only return first combination of simplified alternative FDs instead of all combinations 
+def simplify_lhs_FD(simplified_F, incl_transitive_F, restrict_to_first_min_cover):
+    # all_alt is a nested list of FDs that have simplified alternative left hand-side for each FD
     # There could be 0, or many alternatives for each FD, which will lead to different outcomes of minimal covers
     # Store simplified alternative FDs separately instead of replacing into original list directly
     # This is to find all minimal covers by choosing different alternatives later
-    # Length of simplified_alt correlates to original FD list, so as to replace into original list using same index later
-    # E.g. FD in simplified_alt[2] will replace into simplified_rhs_F[2] afterwards
-    simplified_alt = [[] for i in range(len(simplified_rhs_F))]
+    # Length of all_alt corresponds to original FD list, so as to replace into original list using same index later
+    # E.g. FD in all_alt[2] will replace into simplified_F[2] afterwards
+    all_alt = [[] for i in range(len(simplified_F))]
 
-    for FD_index, outer_FD in enumerate(simplified_rhs_F):
+    # Find alternative FDs with minimal lhs
+    for FD_index, outer_FD in enumerate(simplified_F):
         outer_FD_lhs, outer_FD_rhs = outer_FD
 
-        # If left hand-side is already simplified to 1 attribute, then skip
-        if (len(outer_FD_lhs) == 1):
+        # If left hand-side is already simplified to 1 attribute, then skip this FD
+        if len(outer_FD_lhs) == 1:
             continue
 
+        # Loop through list of FDs (including transitive ones) to find FDs that have simpler lhs
         for inner_FD in incl_transitive_F:
             inner_FD_lhs, inner_FD_rhs = inner_FD
 
             # We want to replace left hand-side of outer FD with smaller subset
-            # If inner FD left hand-side is equal or greater than outer FD lhs in length, then skip
-            if (len(inner_FD_lhs) == len(outer_FD_lhs)):
+            # If inner FD left hand-side is equal or greater than outer FD lhs in length, then break
+            if len(inner_FD_lhs) >= len(outer_FD_lhs):
                 break
 
-            alt = simplified_alt[FD_index]
+            FD_alt = all_alt[FD_index]
 
             # Simplification scenario 1:
             # outer FD rhs = inner FD rhs, AND inner FD lhs is a smaller subset of outer FD lhs
-            # AND inner FD lhs has same number of attributes as any previously added alternatives, not more, otherwise it will not be minimal
-            if (outer_FD_rhs == inner_FD_rhs and inner_FD_lhs.issubset(outer_FD_lhs) and (len(alt) == 0 or len(inner_FD_lhs) == len(alt[0][0]))):
-                simplified_alt[FD_index].append(inner_FD)
+            # AND inner FD lhs has same number of attributes as any previously added alternatives, not more, otherwise it will not be minimal lhs alternative
+            if outer_FD_rhs == inner_FD_rhs and inner_FD_lhs.issubset(outer_FD_lhs) and (len(FD_alt) == 0 or len(inner_FD_lhs) == len(FD_alt[0][0])):
+                all_alt[FD_index].append(inner_FD)
                 continue
 
             # Simplification scenario 2:
             # Using Armstrong Axioms Transitivity Rule, inner FD implies that a subset of outer FD lhs functionally determines another subset of outer FD lhs
             # Example - outer FD = {A, B} -> {C}, and inner FD = {A} -> {B}, then outer FD can be replaced with {A} -> {C}
-            # AND lhs of FD to add, has same number of attributes as any previously added alternatives, not more, otherwise it will not be minimal
-            if (inner_FD_lhs.issubset(outer_FD_lhs) and inner_FD_rhs.issubset(outer_FD_lhs - inner_FD_lhs) and (len(alt) == 0 or len(outer_FD_lhs - inner_FD_rhs) == len(alt[0][0]))):
-                simplified_alt[FD_index].append(
+            # AND lhs of FD to add as alt, has same number of attributes as any previously added alternatives, not more, otherwise it will not be minimal lhs alternative
+            if inner_FD_lhs.issubset(outer_FD_lhs) and inner_FD_rhs.issubset(outer_FD_lhs - inner_FD_lhs) and (len(FD_alt) == 0 or len(outer_FD_lhs - inner_FD_rhs) == len(FD_alt[0][0])):
+                all_alt[FD_index].append(
                     [(outer_FD_lhs - inner_FD_rhs), outer_FD_rhs])
 
 
         # Remove duplicated alternatives now, else it will lead to many more unnecessary permutated outcomes later
-        print('havent cleaned', simplified_alt[FD_index])
-        simplified_alt[FD_index] = remove_duplicate_FD(simplified_alt[FD_index])
-        print('cleaned dups', simplified_alt[FD_index])
+        all_alt[FD_index] = remove_duplicate_FD(all_alt[FD_index])
 
 
-    print('simplify_alt', simplified_alt)
     # Get combinations of alternatives to find all minimal covers
     # To use Python's itertools.product, convert FD format alternatives (nested list) into ids (string of nested indexes)
-    # Example - if simplified_alt = [[], [[{'A', 'E'}, {'F'}]]], id of alt FD [{'A', 'E'}, {'F'}] => [['1-0']]
-    simplified_alt_ids = []
+    # Example - if all_alt = [[], [[{'A', 'E'}, {'F'}]]], id of alt FD [{'A', 'E'}, {'F'}] => '1-0', all_alt_ids = [['1-0']] 
+    all_alt_ids = []
 
-    for FD_index, alts in enumerate(simplified_alt):
-        if (len(alts) == 0):
+    # Convert all alternatives into id
+    for FD_index, FD_alt in enumerate(all_alt):
+        # No alternative for this FD, skip to next FD
+        if len(FD_alt) == 0:
             continue
 
-        ids = [(str(FD_index) + '-' + str(alt_index)) for alt_index, alt in enumerate(alts)]
-        simplified_alt_ids.append(ids)
+        ids = [(str(FD_index) + '-' + str(alt_index)) for alt_index, alt in enumerate(FD_alt)]
+        all_alt_ids.append(ids)
 
     # If all FDs have no alternatives, exit and return only original F passed in as argument
-    if (len(simplified_alt_ids) == 0):
-        return [simplified_rhs_F]
+    if len(all_alt_ids) == 0:
+        return [simplified_F]
 
-    print('hello', simplified_alt_ids)
-    # Get combinations of alternatives' ids
-    all_combination = list(itertools.product(*simplified_alt_ids))
+    # Get combinations of alternatives' ids, only one alt id for each FD should be in one combination 
+    # This is why we needed to store alternative as id before running them through itertools.product
+    # Example: if all_alt_ids = [['3-0'], ['4-0'], ['6-0', '6-1']] => all_combinations = [('3-0', '4-0', '6-0'), ('3-0', '4-0', '6-1')]
+    all_combinations = list(itertools.product(*all_alt_ids))
 
-    # If mode is set to only get one minimal cover, select only the first combination
-    if (restrict_to_first_min_cover):
-        all_combination = [all_combination[0]]
-
-    print('all possibilities', all_combination)
-    print('===========')
-    print('original F', simplified_rhs_F)
+    # If mode is set to only get one minimal cover, limit to only the first combination
+    if restrict_to_first_min_cover:
+        all_combinations = [all_combinations[0]]
 
     # Generate many sets of F based on different combinations of lhs alternatives for each FD
-    # This will get all minimal covers later (will also remove duplicated outcomes at the last step of finding minimal cover later)
+    # This will get all minimal covers later (will also remove duplicated outcomes later)
     many_F = []
-    for combi in all_combination:
-        alt_F = simplified_rhs_F.copy()
+    for combi in all_combinations:
+        alt_F = simplified_F.copy()
 
-        for id in combi:
-            split_id = id.split('-')
+        for alt_id in combi:
+            split_id = alt_id.split('-')
             FD_index = int(split_id[0])
             alt_index = int(split_id[1])
-            alt_F[FD_index] = simplified_alt[FD_index][alt_index]
+            # Replace original FD with simplified alternative FD in this combination
+            alt_F[FD_index] = all_alt[FD_index][alt_index]
         many_F.append(alt_F)
-
-    # TODO: remove?
-    print('\n====== start many_F ======')
-    # print('many_F', many_F)
-    for F in many_F:
-        print('\n==============\n')
-        print(F)
-    print('====== end many_F ======\n')
-    # TODO: end remove?
 
     return many_F
 
