@@ -69,9 +69,15 @@ def min_covers(R, FD):
 
 ## Q2c. Return all minimal covers of a given schema R and functional dependencies F.
 def all_min_covers(R, FD):
-    # TODO: add summary of get min covers here
     '''
     Explain the rationale of the algorithm here.
+    Ans: We start by finding the closures for all attribute sets, this will infer additional functional dependencies using Armstrong Axioms that are not found in the original FD list. 
+    Since we infer a complete set of FDs, using the same function get_min_covers(), the function algorithm will derive a complete set of minimal covers otherwise not reachable by using original FD list itself
+    Example: If the data structure returned for one closure is [['A', 'B'], ['A', 'B', 'C', 'D']], passing the same closure data into get_min_covers(), 
+    it will be decomposed to derive functional dependencies AB -> A, AB -> B, AB -> C, AB -> D, before using this complete set of FDs (along with decomposed FDs from other attribute closures) to find all minimal covers
+    If there are redundant functional dependencies from the closure, e.g. ABC -> D is redundant when A -> D already exists, 
+    they will be simplified in simplify_lhs_FD() or removed in remove_transitive_FD() steps of get_min_covers(), leading to all minimal covers found being minimal and deriving the full set
+    Please refer to comments in get_min_covers() for breakdown of logic in the algorithm, same as Q2a and Q2b
     '''
     all_closures_as_FD = all_closures(R, FD)
 
