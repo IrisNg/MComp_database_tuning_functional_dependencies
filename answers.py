@@ -26,7 +26,7 @@ def all_closures(R, F):
 
     # Find closure of each closure_attribute_set one by one
     num_schema_attributes = len(R)
-    candidate_keys = [] # Example: [{'C'}, {'A', 'B'}]
+    candidate_keys = []  # Example: [{'C'}, {'A', 'B'}]
     closures_without_non_candidatekey_superkey = []
 
     for closure_attribute_set in all_closure_attribute_sets:
@@ -35,9 +35,11 @@ def all_closures(R, F):
         # and we want to omit superkeys that are not candidate keys per the requirements
         if (len(candidate_keys) > 0) and any(True if ck.issubset(set(closure_attribute_set)) else False for ck in candidate_keys):
             continue
-            
-        calculated_closure = get_one_closure(R, non_empty_F, closure_attribute_set)
-        closures_without_non_candidatekey_superkey.append([closure_attribute_set, calculated_closure])
+
+        calculated_closure = get_one_closure(
+            R, non_empty_F, closure_attribute_set)
+        closures_without_non_candidatekey_superkey.append(
+            [closure_attribute_set, calculated_closure])
 
         if len(calculated_closure) == num_schema_attributes:
             # Superkey AND Candidate key, as all attributes of R are functionally dependent on this closure_attribute_set
@@ -52,7 +54,8 @@ def min_cover(R, FD):
     # Returns nested list of one minimal cover (to reuse get_min_covers() for min_covers and all_min_covers questions)
     # Extract only the first mininmal cover from nested list
     # restrict_to_first_min_cover=True prevents get_min_covers (and its sub functions) from finding more than one permutation, which improves performance when getting only one minimal cover
-    nested_min_covers = get_min_covers(R, non_empty_F, restrict_to_first_min_cover=True)
+    nested_min_covers = get_min_covers(
+        R, non_empty_F, restrict_to_first_min_cover=True)
 
     return nested_min_covers[0]
 
@@ -160,7 +163,7 @@ def get_min_covers(R, F, restrict_to_first_min_cover):
 
     # Step 1 - get F': Minimize right hand-side of every functional dependency to attain form X -> {A}
     # 1a. This is done by using Armstrong Axioms Decomposition Rule
-    # Example: if one FD = [['A', 'B'], ['C', 'D']], after completing step 1 and decomposed this FD, 
+    # Example: if one FD = [['A', 'B'], ['C', 'D']], after completing step 1 and decomposed this FD,
     # we get => [['A', 'B'], ['C']], [['A', 'B'], ['D']] (resulting into 2 FDs)
     simplified_rhs_F = decompose_FD(converted_F_with_FD_set)
 
@@ -168,7 +171,7 @@ def get_min_covers(R, F, restrict_to_first_min_cover):
     # Example: this will remove trivial FD = [['A', 'B'], ['A']] and [['A'], ['A']]
     simplified_rhs_F = remove_trivial_FD(simplified_rhs_F)
 
-    # Step 2 - get F'': Minimize left hand-side of every functional dependency, 
+    # Step 2 - get F'': Minimize left hand-side of every functional dependency,
     # such that for every functional dependency in the form X -> {A} there is no functional dependency Y -> {A} with Y being a proper subset of X
     # 2a. Infer additional transitive FDs using Armstrong Axioms Transitivity Rule
     # Found transitive FDs could be used to replace FDs with superset left hand-side later
@@ -180,24 +183,30 @@ def get_min_covers(R, F, restrict_to_first_min_cover):
     # Example: original FD = [['A', 'B'], ['C']], another FD = [['A'], ['B']], this could be simplified to [['A'], ['C']]
     # As each FD can be replaced by one or more simpler FD (resulting in different minimal cover outcome),
     # return many permutations (a list) of simplified F based on each replacement possibility, product of possibilities with other replaceable FDs
-    many_simplified_lhs_rhs_F = simplify_lhs_FD(simplified_rhs_F, incl_transitive_F, restrict_to_first_min_cover)
+    many_simplified_lhs_rhs_F = simplify_lhs_FD(
+        simplified_rhs_F, incl_transitive_F, restrict_to_first_min_cover)
 
     # Step 3 - get F''': Minimize the set, such that none of the FD can be derived from other FDs
     # 3a. Remove duplicated FDs within each simplified F
     # And remove duplicated F (with exact same FDs across more than one F), this will prevent performance issue in next step when number of permutations increase further
-    many_simplified_lhs_rhs_F = [remove_duplicate_FD(simplified_F) for simplified_F in many_simplified_lhs_rhs_F]
-    many_simplified_lhs_rhs_F = remove_duplicate_F(many_simplified_lhs_rhs_F, is_convert_FD_to_list = False)
+    many_simplified_lhs_rhs_F = [remove_duplicate_FD(
+        simplified_F) for simplified_F in many_simplified_lhs_rhs_F]
+    many_simplified_lhs_rhs_F = remove_duplicate_F(
+        many_simplified_lhs_rhs_F, is_convert_FD_to_list=False)
 
     # 3b. Remove transitive FDs within each simplified F that can be derived using Armstrong Axioms Transitivity Rule from other FDs
     # As we can reach different minimal cover outcome based on which transitive FD is removed first,
-    # we find permutations and rotate the order of removable transitive FD within F itself, before removing transitive FD sequentially 
-    # This will result in even more sets of min_covers, nested in the list of permutations from 2b 
-    many_min_covers_nested = [remove_transitive_FD(simplified_F, restrict_to_first_min_cover) for simplified_F in many_simplified_lhs_rhs_F]
+    # we find permutations and rotate the order of removable transitive FD within F itself, before removing transitive FD sequentially
+    # This will result in even more sets of min_covers, nested in the list of permutations from 2b
+    many_min_covers_nested = [remove_transitive_FD(
+        simplified_F, restrict_to_first_min_cover) for simplified_F in many_simplified_lhs_rhs_F]
     # Flatten nested list from 3b and 2b into a list of min_cover
-    many_min_covers = [min_cover for many_min_covers_list in many_min_covers_nested for min_cover in many_min_covers_list]
+    many_min_covers = [
+        min_cover for many_min_covers_list in many_min_covers_nested for min_cover in many_min_covers_list]
 
     # Remove duplicated minimal covers, and convert FD from set back into list
-    many_unique_min_covers = remove_duplicate_F(many_min_covers, is_convert_FD_to_list = True)
+    many_unique_min_covers = remove_duplicate_F(
+        many_min_covers, is_convert_FD_to_list=True)
 
     return many_unique_min_covers
 
@@ -231,7 +240,8 @@ def add_transitive_FD(F):
     incl_transitive_F = F.copy()
 
     # Maintain a set of FD strings for quick searching to check if FD is already added
-    unique_F_string_set = set([convert_FD_list_to_string(FD) for FD in F.copy()])
+    unique_F_string_set = set(
+        [convert_FD_list_to_string(FD) for FD in F.copy()])
 
     # Infer transitive FD from original F and added transitive FDs continuously, until loop is broken when no more FD can be inferred
     while True:
@@ -254,7 +264,8 @@ def add_transitive_FD(F):
                     # Check if transitive FD is already added previously
                     if transitive_FD_string not in unique_F_string_set:
                         # New transitive FD, add to cumulative list and set
-                        incl_transitive_F.append(convert_FD_list_to_set(transitive_FD))
+                        incl_transitive_F.append(
+                            convert_FD_list_to_set(transitive_FD))
                         unique_F_string_set.add(transitive_FD_string)
                         counter += 1
 
@@ -264,6 +275,7 @@ def add_transitive_FD(F):
 
     return incl_transitive_F
 
+
 # simplified_F and incl_transitive_F are both a list of FDs in 'set' type
 # however incl_transitive_F should include additional transitive FDs compared to simplified_F 
 # incl_transitive_F will be used during the simplication process to look for alternative FDs with minimal left hand-side
@@ -272,8 +284,9 @@ def simplify_lhs_FD(unsorted_simplified_F, unsorted_incl_transitive_F, restrict_
     # Sort both F list from lhs singletons, to pairs, to triplets, etc
     # This makes the algorithm to find alternative minimal lhs for each FD more efficient later
     # because loop can be broken once a larger set of lhs is reached
-    simplified_F = sorted(unsorted_simplified_F, key = lambda x: len(x[0]))
-    incl_transitive_F = sorted(unsorted_incl_transitive_F, key = lambda x: len(x[0]))
+    simplified_F = sorted(unsorted_simplified_F, key=lambda x: len(x[0]))
+    incl_transitive_F = sorted(
+        unsorted_incl_transitive_F, key=lambda x: len(x[0]))
 
     # all_alt is a nested list of FDs that have simplified alternative left hand-side for each FD
     # There could be 0, or many alternatives for each FD, which will lead to different outcomes of minimal covers
@@ -317,14 +330,12 @@ def simplify_lhs_FD(unsorted_simplified_F, unsorted_incl_transitive_F, restrict_
                 all_alt[FD_index].append(
                     [(outer_FD_lhs - inner_FD_rhs), outer_FD_rhs])
 
-
         # Remove duplicated alternatives now, else it will lead to more unnecessary permutated outcomes later
         all_alt[FD_index] = remove_duplicate_FD(all_alt[FD_index])
 
-
     # Get combinations of alternatives to find all minimal covers
     # To use Python's itertools.product, convert FD format alternatives (nested list) into ids (string of nested indexes)
-    # Example - if all_alt = [[], [[{'A', 'E'}, {'F'}]]], id of alt FD [{'A', 'E'}, {'F'}] => '1-0', all_alt_ids = [['1-0']] 
+    # Example - if all_alt = [[], [[{'A', 'E'}, {'F'}]]], id of alt FD [{'A', 'E'}, {'F'}] => '1-0', all_alt_ids = [['1-0']]
     all_alt_ids = []
 
     # Convert all alternatives into id
@@ -333,14 +344,15 @@ def simplify_lhs_FD(unsorted_simplified_F, unsorted_incl_transitive_F, restrict_
         if len(FD_alt) == 0:
             continue
 
-        ids = [(str(FD_index) + '-' + str(alt_index)) for alt_index, alt in enumerate(FD_alt)]
+        ids = [(str(FD_index) + '-' + str(alt_index))
+               for alt_index, alt in enumerate(FD_alt)]
         all_alt_ids.append(ids)
 
     # If all FDs have no alternatives, exit and return only original F passed in as argument
     if len(all_alt_ids) == 0:
         return [simplified_F]
 
-    # Get combinations of alternatives' ids, only one alt id for each FD should be in one combination 
+    # Get combinations of alternatives' ids, only one alt id for each FD should be in one combination
     # Example: if all_alt_ids = [['3-0'], ['4-0'], ['6-0', '6-1']] => all_combinations = [('3-0', '4-0', '6-0'), ('3-0', '4-0', '6-1')]
     all_combinations = list(itertools.product(*all_alt_ids))
 
@@ -393,7 +405,7 @@ def remove_transitive_FD(F, restrict_to_first_min_cover):
         is_omittable = False
 
         # Find matching first_inner_FD and second_inner_FD, first_inner_FD and second_inner_FD together should transitively infer outer_FD
-        # Example: if outer_FD = [{'A'}, {'D'}], a first_inner_FD [{'A'}, {'B'}] and second_inner_FD [{'B'}, {'D'}] 
+        # Example: if outer_FD = [{'A'}, {'D'}], a first_inner_FD [{'A'}, {'B'}] and second_inner_FD [{'B'}, {'D'}]
         # would mean outer_FD can be transitively inferred and thus can be removed
         for first_inner_FD_index, first_inner_FD in enumerate(F):
             if is_omittable:
@@ -404,18 +416,18 @@ def remove_transitive_FD(F, restrict_to_first_min_cover):
 
             # first_inner_FD needs to match outer_FD lhs
             if outer_FD[0] == first_inner_FD[0]:
-                
+
                 for second_inner_FD_index, second_inner_FD in enumerate(F):
                     if outer_FD_index == second_inner_FD_index:
                         continue
-                    
+
                     # TODO: could potentially change this to recursive algorithm to find >= 3 chained FDs for one transitive outer_FD, currently only works for 2 chained FDs
                     # second_inner_FD lhs needs to match first_inner_FD rhs, and second_inner_FD rhs to match outer_FD rhs
                     if first_inner_FD[1] == second_inner_FD[0] and outer_FD[1] == second_inner_FD[1]:
-                        omittable_FD.append(outer_FD) 
+                        omittable_FD.append(outer_FD)
                         is_omittable = True
                         break
-        
+
         if not is_omittable:
             non_omittable_FD.append(outer_FD)
 
@@ -426,7 +438,7 @@ def remove_transitive_FD(F, restrict_to_first_min_cover):
 
     # Find permutations of ordering omittable FDs differently within F list
     # Different minimal cover outcomes can be reached by:
-    # removing omittable transitive FD -> check remaining FDs -> remove omittable transitive FD -> rinse and repeat sequentially  
+    # removing omittable transitive FD -> check remaining FDs -> remove omittable transitive FD -> rinse and repeat sequentially
     omittable_ids = ''.join([str(index) for index in range(len(omittable_FD))])
     permutations = list(itertools.permutations(
         omittable_ids, len(omittable_FD)))
@@ -446,7 +458,6 @@ def remove_transitive_FD(F, restrict_to_first_min_cover):
         many_F_with_omittable_rotated.append(
             [*omittable_permutation, *non_omittable_FD])
 
-
     for rotated_F in many_F_with_omittable_rotated:
         # Remove transitive FDs sequentially and check before removing the next
         for outer_FD_index, outer_FD in enumerate(rotated_F):
@@ -460,7 +471,7 @@ def remove_transitive_FD(F, restrict_to_first_min_cover):
                 # or skip if same FD for outer and inner loop
                 if first_inner_FD is None or outer_FD_index == first_inner_FD_index:
                     continue
-                
+
                 # Find first and second inner FD that matches to transitively infer outer_FD
                 # If two inner FDs are found, outer_FD can be removed
                 if outer_FD[0] == first_inner_FD[0]:
@@ -469,7 +480,7 @@ def remove_transitive_FD(F, restrict_to_first_min_cover):
                         # or skip if same FD for outer and inner loop
                         if second_inner_FD is None or outer_FD_index == second_inner_FD_index:
                             continue
-                        
+
                         # second_inner_FD lhs needs to match first_inner_FD rhs, and second_inner_FD rhs to match outer_FD rhs
                         if first_inner_FD[1] == second_inner_FD[0] and outer_FD[1] == second_inner_FD[1]:
                             # Two matching inner FDs are found, remove outer_FD from rotated_F
@@ -492,11 +503,12 @@ def remove_transitive_FD(F, restrict_to_first_min_cover):
 def remove_duplicate_F(many_F, is_convert_FD_to_list=False):
     many_unique_F = []
     # Store each unique F as set of FD strings, to compare uniqueness of FD set more performantly
-    many_unique_F_set = [] # Example: [{'AB->C', 'D->E'}, {'B->D', 'CD->E'}]
-    
+    many_unique_F_set = []  # Example: [{'AB->C', 'D->E'}, {'B->D', 'CD->E'}]
+
     # Loop through each F to check for uniqueness
     for F in many_F:
-        F_set = set(convert_FD_list_to_string(convert_FD_set_to_list(FD)) for FD in F)
+        F_set = set(convert_FD_list_to_string(
+            convert_FD_set_to_list(FD)) for FD in F)
 
         # If current loop is a unique F, it will not exactly match FDs with any previously added unique F
         if (len(many_unique_F_set) == 0) or all(True if unique_F_set != F_set else False for unique_F_set in many_unique_F_set):
