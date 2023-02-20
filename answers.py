@@ -7,7 +7,7 @@ import itertools
 
 ## Change the function below with your student number.
 def student_number():
-    return 'A003419B'
+    return 'A0083419B'
 
 ## Q1a. Determine the closure of a given set of attribute S the schema R and functional dependency F
 def closure(R, F, S):
