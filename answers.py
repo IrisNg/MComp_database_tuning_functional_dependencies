@@ -388,20 +388,23 @@ def remove_transitive_FD(F, restrict_to_first_min_cover):
     non_omittable_FD = []
 
     # Find FD that could be replaced by other FDs using Armstrong Axioms Transitivity Rule
-    # Do not remove omittable FDs from original F yet, find permutations to remove omittable FDs in sequence later as it may affect outcome of minimal cover
+    # Do not remove omittable FDs from original F yet, find permutations to remove omittable FDs in sequence later, as it may affect outcome of minimal cover
     for outer_FD_index, outer_FD in enumerate(F):
         is_omittable = False
 
+        # Find matching first_inner_FD and second_inner_FD, first_inner_FD and second_inner_FD together should transitively infer outer_FD
+        # Example: if outer_FD = [{'A'}, {'D'}], a first_inner_FD [{'A'}, {'B'}] and second_inner_FD [{'B'}, {'D'}] 
+        # would mean outer_FD can be transitively inferred and thus can be removed
         for first_inner_FD_index, first_inner_FD in enumerate(F):
             if is_omittable:
                 break
 
             if outer_FD_index == first_inner_FD_index:
                 continue
-            
+
             # first_inner_FD needs to match outer_FD lhs
             if outer_FD[0] == first_inner_FD[0]:
-                # Find second_inner_FD that matches with first_inner_FD, first_inner_FD and second_inner_FD together should transitively infer outer_FD
+                
                 for second_inner_FD_index, second_inner_FD in enumerate(F):
                     if outer_FD_index == second_inner_FD_index:
                         continue
@@ -415,21 +418,18 @@ def remove_transitive_FD(F, restrict_to_first_min_cover):
         if not is_omittable:
             non_omittable_FD.append(outer_FD)
 
-
     # If none of the FDs can be removed (cannot be inferred by remaining FDs transitively)
-    # No need to find permutations of removal sequence, simply return original F
+    # No need to find permutations of removal sequence, simply return original F, it is already the minimal cover
     if len(omittable_FD) == 0:
         return [F]
 
     # Find permutations of ordering omittable FDs differently within F list
     # Different minimal cover outcomes can be reached by:
     # removing omittable transitive FD -> check remaining FDs -> remove omittable transitive FD -> rinse and repeat sequentially  
-    many_F_with_omittable_rotated = []
     omittable_ids = ''.join([str(index) for index in range(len(omittable_FD))])
     permutations = list(itertools.permutations(
         omittable_ids, len(omittable_FD)))
 
-    # TODO: test
     # If mode is set to only get one minimal cover, limit to only the first permutation
     if restrict_to_first_min_cover:
         permutations = [permutations[0]]
@@ -438,13 +438,14 @@ def remove_transitive_FD(F, restrict_to_first_min_cover):
     # No additional permutations need to be found for non_omittable FDs
     # as their ordering do not affect the minimal cover outcomes
     # this reduces the number of permutations, and improve performance
+    many_F_with_omittable_rotated = []
     for permutation in permutations:
         omittable_permutation = [
             omittable_FD[int(omittable_index)] for omittable_index in permutation]
         many_F_with_omittable_rotated.append(
             [*omittable_permutation, *non_omittable_FD])
 
-    
+
     for rotated_F in many_F_with_omittable_rotated:
         # Remove transitive FDs sequentially and check before removing the next
         for outer_FD_index, outer_FD in enumerate(rotated_F):
@@ -476,14 +477,12 @@ def remove_transitive_FD(F, restrict_to_first_min_cover):
                             is_outer_FD_removed = True
                             break
 
-
     # Remove FD elements that are None from each F, to get minimal cover
     many_F_filtered_out_removed = []
     for new_F in many_F_with_omittable_rotated:
         many_F_filtered_out_removed.append(
             list(filter(lambda FD: FD is not None, new_F)))
 
-    # TODO: Sort FD after?
     return many_F_filtered_out_removed
 
 
@@ -616,6 +615,14 @@ def main():
     print('\n============================================\n\n')
 
     print('============================================')
+    print('remove_transitive_FD()')
+    remove_transitive_FD_input = [[[{'A'}, {'C'}], [{'A'}, {'B'}], [{'C'}, {'D'}], [{'B'}, {'C'}], [{'B'}, {'D'}], [{'A'}, {'D'}]], False]
+    print('input =', *remove_transitive_FD_input)
+    print('\n')
+    print(remove_transitive_FD(*remove_transitive_FD_input))
+    print('\n============================================\n\n')
+
+    print('============================================')
     print('closure()')
     closure_input = [['A', 'B', 'C', 'D'], [[['A', 'B'], ['C']], [['C'], ['D']], [[], ['A']], [['B'], []]], ['A', 'B']]
     print('input =', *closure_input)
@@ -632,6 +639,37 @@ def main():
     print('\n============================================\n\n')
 
 
+    # R = ['A', 'B', 'C', 'D', 'E', 'F']
+    # FD = [[['A'], ['B', 'C']], [['B'], ['C','D']], [['D'], ['B', 'C']], [['A','B','E'], ['F']]]
+    # print(min_covers(R, FD))
+
+
+#     print(closure(R, FD, ['A']))
+#     print(closure(R, FD, ['A', 'B']))
+
+    # R = ['A', 'B', 'C', 'D']
+    # FD = [[['A', 'B'], ['C']], [['C'], ['D']]]
+
+    # print(closure(R, FD, ['A']))
+    # print(closure(R, FD, ['A', 'B']))
+
+
+    # Test case from the project
+    # R = ['A', 'B', 'C', 'D', 'E']
+    # FD = [[['A'], ['B']], [['B'], ['C']], [['C'], ['D']], [['D'], ['E']]]
+
+    # R = ['A', 'B', 'C', 'D']
+    # FD = [[['A', 'B'], ['C']], [['C'], ['D']]]
+
+    # print(closure(R, FD, ['A']))
+    # print(all_closures(R, FD))
+    # print(all_min_covers(R, FD))
+
+    R = ['A', 'B', 'C', 'D', 'E', 'F']
+    FD = [[['A'], ['B', 'C', 'E']], [['A', 'E'], ['C', 'D']],
+          [['D'], ['B']], [['A', 'B', 'E'], ['F']]]
+    # FD = [[['A'], ['B', 'C']], [['B'], ['C','D']], [['D'], ['B', 'C']], [['A','B','E'], ['F']]]
+    print(min_covers(R, FD))
 
 
 if __name__ == '__main__':
