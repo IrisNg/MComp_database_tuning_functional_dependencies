@@ -409,6 +409,7 @@ def remove_transitive_FD(F, restrict_to_first_min_cover):
                     if outer_FD_index == second_inner_FD_index:
                         continue
                     
+                    # TODO: could potentially change this to recursive algorithm to find >= 3 chained FDs for one transitive outer_FD, currently only works for 2 chained FDs
                     # second_inner_FD lhs needs to match first_inner_FD rhs, and second_inner_FD rhs to match outer_FD rhs
                     if first_inner_FD[1] == second_inner_FD[0] and outer_FD[1] == second_inner_FD[1]:
                         omittable_FD.append(outer_FD) 
@@ -513,163 +514,132 @@ def remove_duplicate_F(many_F, is_convert_FD_to_list=False):
 
 
 ## Main functions
-# def main():
-#     ### Test case from the project
-#     R = ['A', 'B', 'C', 'D']
-#     FD = [[['A', 'B'], ['C']], [['C'], ['D']]]
+def main():
+    ### Test case from the project
+    R = ['A', 'B', 'C', 'D']
+    FD = [[['A', 'B'], ['C']], [['C'], ['D']]]
 
-#     print(closure(R, FD, ['A']))
-#     print(closure(R, FD, ['A', 'B']))
-#     print(all_closures(R, FD))
+    print(closure(R, FD, ['A']))
+    print(closure(R, FD, ['A', 'B']))
+    print(all_closures(R, FD))
 
-#     R = ['A', 'B', 'C', 'D', 'E', 'F']
-#     FD = [[['A'], ['B', 'C']], [['B'], ['C','D']], [['D'], ['B']], [['A','B','E'], ['F']]]
-#     print(min_cover(R, FD)) 
+    R = ['A', 'B', 'C', 'D', 'E', 'F']
+    FD = [[['A'], ['B', 'C']], [['B'], ['C','D']], [['D'], ['B']], [['A','B','E'], ['F']]]
+    print(min_cover(R, FD)) 
 
-#     R = ['A', 'B', 'C']
-#     FD = [[['A'], ['B']], [['B'], ['C']], [['C'], ['A']]] 
-#     print(min_covers(R, FD))
-#     print(all_min_covers(R, FD)) 
+    R = ['A', 'B', 'C']
+    FD = [[['A'], ['B']], [['B'], ['C']], [['C'], ['A']]] 
+    print(min_covers(R, FD))
+    print(all_min_covers(R, FD)) 
 
     ### Add your own additional test cases if necessary
 
+    # print('TESTING...')
 
-def main():
+    # print('============================================')
+    # print('get_subset_combination()')
+    # get_subset_combination_input = ['A', 'B', 'C', 'D']
+    # print('input =', get_subset_combination_input)
+    # print('\n')
+    # print(get_subset_combination(get_subset_combination_input))
+    # print('\n============================================\n\n')
 
-    print('TESTING...')
+    # print('============================================')
+    # print('remove_empty_FD()')
+    # remove_empty_FD_input = [[['A', 'B'], ['C']], [['C'], ['D']], [[], ['A']], [['B'], []] ]
+    # print('input =', remove_empty_FD_input)
+    # print('\n')
+    # print(remove_empty_FD(remove_empty_FD_input))
+    # print('\n============================================\n\n')
 
-    print('============================================')
-    print('get_subset_combination()')
-    get_subset_combination_input = ['A', 'B', 'C', 'D']
-    print('input =', get_subset_combination_input)
-    print('\n')
-    print(get_subset_combination(get_subset_combination_input))
-    print('\n============================================\n\n')
+    # print('============================================')
+    # print('remove_trivial_FD()')
+    # remove_trivial_FD_input = [[{'A', 'B'}, {'C'}], [{'C'}, {'D'}], [{'A'}, {'A'}], [{'A', 'B'}, {'A'}], [{'B', 'D'}, {'B', 'D'}], [{'B', 'E'}, {'B', 'E', 'F'}] ]
+    # print('input =', remove_trivial_FD_input)
+    # print('\n')
+    # print(remove_trivial_FD(remove_trivial_FD_input))
+    # print('\n============================================\n\n')
 
-    print('============================================')
-    print('remove_empty_FD()')
-    remove_empty_FD_input = [[['A', 'B'], ['C']], [['C'], ['D']], [[], ['A']], [['B'], []] ]
-    print('input =', remove_empty_FD_input)
-    print('\n')
-    print(remove_empty_FD(remove_empty_FD_input))
-    print('\n============================================\n\n')
+    # print('============================================')
+    # print('decompose_FD()')
+    # decompose_FD_input = [[{'A', 'B'}, {'C', 'D', 'E'}], [{'C'}, {'D'}], [{'A'}, {'B', 'F'}] ]
+    # print('input =', decompose_FD_input)
+    # print('\n')
+    # print(decompose_FD(decompose_FD_input))
+    # print('\n============================================\n\n')
 
-    print('============================================')
-    print('remove_trivial_FD()')
-    remove_trivial_FD_input = [[{'A', 'B'}, {'C'}], [{'C'}, {'D'}], [{'A'}, {'A'}], [{'A', 'B'}, {'A'}], [{'B', 'D'}, {'B', 'D'}], [{'B', 'E'}, {'B', 'E', 'F'}] ]
-    print('input =', remove_trivial_FD_input)
-    print('\n')
-    print(remove_trivial_FD(remove_trivial_FD_input))
-    print('\n============================================\n\n')
-
-    print('============================================')
-    print('decompose_FD()')
-    decompose_FD_input = [[{'A', 'B'}, {'C', 'D', 'E'}], [{'C'}, {'D'}], [{'A'}, {'B', 'F'}] ]
-    print('input =', decompose_FD_input)
-    print('\n')
-    print(decompose_FD(decompose_FD_input))
-    print('\n============================================\n\n')
-
-    print('============================================')
-    print('add_transitive_FD()')
-    add_transitive_FD_input = [[{'A', 'B'}, {'C'}], [{'C'}, {'D'}], [{'D'}, { 'E'}], [{'B'}, {'D'}] ]
-    print('input =', add_transitive_FD_input)
-    print('\n')
-    print(add_transitive_FD(add_transitive_FD_input))
-    print('\n============================================\n\n')
+    # print('============================================')
+    # print('add_transitive_FD()')
+    # add_transitive_FD_input = [[{'A', 'B'}, {'C'}], [{'C'}, {'D'}], [{'D'}, { 'E'}], [{'B'}, {'D'}] ]
+    # print('input =', add_transitive_FD_input)
+    # print('\n')
+    # print(add_transitive_FD(add_transitive_FD_input))
+    # print('\n============================================\n\n')
     
-    print('============================================')
-    print('remove_duplicate_FD()')
-    remove_duplicate_FD_input = [[{'A', 'B'}, {'C', 'D', 'E'}], [{'C'}, {'D'}], [{'A'}, {'B', 'F'}], [{'B', 'A'}, {'E', 'D', 'C'}], [{'C'}, {'D'}] ]
-    print('input =', remove_duplicate_FD_input)
-    print('\n')
-    print(remove_duplicate_FD(remove_duplicate_FD_input))
-    print('\n============================================\n\n')
+    # print('============================================')
+    # print('remove_duplicate_FD()')
+    # remove_duplicate_FD_input = [[{'A', 'B'}, {'C', 'D', 'E'}], [{'C'}, {'D'}], [{'A'}, {'B', 'F'}], [{'B', 'A'}, {'E', 'D', 'C'}], [{'C'}, {'D'}] ]
+    # print('input =', remove_duplicate_FD_input)
+    # print('\n')
+    # print(remove_duplicate_FD(remove_duplicate_FD_input))
+    # print('\n============================================\n\n')
 
-    print('============================================')
-    print('remove_duplicate_F()')
-    remove_duplicate_F_input = [
-        [[{'A'}, {'C'}], [{'B', 'A'}, {'A'}], [{'C'}, {'A'}], [{'A'}, {'B'}]], 
-        [[{'B'}, {'C'}], [{'C'}, {'A'}], [{'A'}, {'B'}]], 
-        [[{'C'}, {'B'}], [{'A'}, {'C'}], [{'C'}, {'A'}], [{'B'}, {'C'}]], 
-        [[{'C'}, {'B'}], [{'A', 'D'}, {'C'}], [{'B'}, {'A'}]], 
-        [[{'B'}, {'C'}], [{'A'}, {'B'}], [{'B'}, {'A'}], [{'C'}, {'B'}]], 
-        [[{'A'}, {'C'}], [{'A'}, {'B'}], [{'C'}, {'A'}], [{'B', 'A'}, {'A'}]],  
-        [[{'C'}, {'B'}], [{'A', 'D'}, {'C'}], [{'B'}, {'A'}]]
-    ]
-    print('input =', remove_duplicate_F_input)
-    print('\n convert to list')
-    print(remove_duplicate_F(remove_duplicate_F_input, is_convert_FD_to_list=True))
-    print('\n remain as set')
-    print(remove_duplicate_F(remove_duplicate_F_input, is_convert_FD_to_list=False))
-    print('\n')
-    print('\n============================================\n\n')
+    # print('============================================')
+    # print('remove_duplicate_F()')
+    # remove_duplicate_F_input = [
+    #     [[{'A'}, {'C'}], [{'B', 'A'}, {'A'}], [{'C'}, {'A'}], [{'A'}, {'B'}]], 
+    #     [[{'B'}, {'C'}], [{'C'}, {'A'}], [{'A'}, {'B'}]], 
+    #     [[{'C'}, {'B'}], [{'A'}, {'C'}], [{'C'}, {'A'}], [{'B'}, {'C'}]], 
+    #     [[{'C'}, {'B'}], [{'A', 'D'}, {'C'}], [{'B'}, {'A'}]], 
+    #     [[{'B'}, {'C'}], [{'A'}, {'B'}], [{'B'}, {'A'}], [{'C'}, {'B'}]], 
+    #     [[{'A'}, {'C'}], [{'A'}, {'B'}], [{'C'}, {'A'}], [{'B', 'A'}, {'A'}]],  
+    #     [[{'C'}, {'B'}], [{'A', 'D'}, {'C'}], [{'B'}, {'A'}]]
+    # ]
+    # print('input =', remove_duplicate_F_input)
+    # print('\n convert to list')
+    # print(remove_duplicate_F(remove_duplicate_F_input, is_convert_FD_to_list=True))
+    # print('\n remain as set')
+    # print(remove_duplicate_F(remove_duplicate_F_input, is_convert_FD_to_list=False))
+    # print('\n')
+    # print('\n============================================\n\n')
 
-    print('============================================')
-    print('simplify_lhs_FD()')
-    simplify_lhs_FD_input = [[[{'A','B', 'C'}, {'C'}], [{'A','B'}, {'C'}], [{'A'}, {'C'}], [{'C'}, {'D'}], [{'A'}, {'B'}]], [[{'A','B', 'C'}, {'C'}], [{'A','B'}, {'C'}], [{'C'}, {'D'}], [{'A'}, {'C'}], [{'B'}, {'C'}], [{'A'}, {'B'}]], False]
-    # simplify_lhs_FD_input = [[[{'A'}, {'C'}], [{'C'}, {'D'}], [{'A'}, {'B'}]], [[{'A'}, {'C'}], [{'C'}, {'D'}], [{'A'}, {'B'}], [{'A'}, {'D'}]], False]
-    print('input =', *simplify_lhs_FD_input)
-    print('\n')
-    print(simplify_lhs_FD(*simplify_lhs_FD_input))
-    print('\n============================================\n\n')
+    # print('============================================')
+    # print('simplify_lhs_FD()')
+    # simplify_lhs_FD_input = [[[{'A','B', 'C'}, {'C'}], [{'A','B'}, {'C'}], [{'A'}, {'C'}], [{'C'}, {'D'}], [{'A'}, {'B'}]], [[{'A','B', 'C'}, {'C'}], [{'A','B'}, {'C'}], [{'C'}, {'D'}], [{'A'}, {'C'}], [{'B'}, {'C'}], [{'A'}, {'B'}]], False]
+    # # simplify_lhs_FD_input = [[[{'A'}, {'C'}], [{'C'}, {'D'}], [{'A'}, {'B'}]], [[{'A'}, {'C'}], [{'C'}, {'D'}], [{'A'}, {'B'}], [{'A'}, {'D'}]], False]
+    # print('input =', *simplify_lhs_FD_input)
+    # print('\n')
+    # print(simplify_lhs_FD(*simplify_lhs_FD_input))
+    # print('\n============================================\n\n')
 
-    print('============================================')
-    print('remove_transitive_FD()')
-    remove_transitive_FD_input = [[[{'A'}, {'C'}], [{'A'}, {'B'}], [{'C'}, {'D'}], [{'B'}, {'C'}], [{'B'}, {'D'}], [{'A'}, {'D'}]], False]
-    print('input =', *remove_transitive_FD_input)
-    print('\n')
-    print(remove_transitive_FD(*remove_transitive_FD_input))
-    print('\n============================================\n\n')
+    # print('============================================')
+    # print('remove_transitive_FD()')
+    # remove_transitive_FD_input = [[[{'A'}, {'C'}], [{'A'}, {'B'}], [{'C'}, {'D'}], [{'B'}, {'C'}], [{'B'}, {'D'}], [{'A'}, {'D'}]], False]
+    # print('input =', *remove_transitive_FD_input)
+    # print('\n')
+    # print(remove_transitive_FD(*remove_transitive_FD_input))
+    # print('\n============================================\n\n')
 
-    print('============================================')
-    print('closure()')
-    closure_input = [['A', 'B', 'C', 'D'], [[['A', 'B'], ['C']], [['C'], ['D']], [[], ['A']], [['B'], []]], ['A', 'B']]
-    print('input =', *closure_input)
-    print('\n')
-    print(closure(*closure_input))
-    print('\n============================================\n\n')
+    # print('============================================')
+    # print('closure()')
+    # closure_input = [['A', 'B', 'C', 'D'], [[['A', 'B'], ['C']], [['C'], ['D']], [[], ['A']], [['B'], []]], ['A', 'B']]
+    # print('input =', *closure_input)
+    # print('\n')
+    # print(closure(*closure_input))
+    # print('\n============================================\n\n')
 
-    print('============================================')
-    print('all_closures()')
-    all_closures_input = [['A', 'B', 'C', 'D'], [[['A', 'B'], ['C']], [['C'], ['D']], [[], ['A']], [['B'], []]]]
-    print('input =', *all_closures_input)
-    print('\n')
-    print(all_closures(*all_closures_input))
-    print('\n============================================\n\n')
-
+    # print('============================================')
+    # print('all_closures()')
+    # all_closures_input = [['A', 'B', 'C', 'D'], [[['A', 'B'], ['C']], [['C'], ['D']], [[], ['A']], [['B'], []]]]
+    # print('input =', *all_closures_input)
+    # print('\n')
+    # print(all_closures(*all_closures_input))
+    # print('\n============================================\n\n')
 
     # R = ['A', 'B', 'C', 'D', 'E', 'F']
-    # FD = [[['A'], ['B', 'C']], [['B'], ['C','D']], [['D'], ['B', 'C']], [['A','B','E'], ['F']]]
+    # FD = [[['A'], ['B', 'C', 'E']], [['A', 'E'], ['C', 'D']],
+    #       [['D'], ['B']], [['A', 'B', 'E'], ['F']]]
     # print(min_covers(R, FD))
-
-
-#     print(closure(R, FD, ['A']))
-#     print(closure(R, FD, ['A', 'B']))
-
-    # R = ['A', 'B', 'C', 'D']
-    # FD = [[['A', 'B'], ['C']], [['C'], ['D']]]
-
-    # print(closure(R, FD, ['A']))
-    # print(closure(R, FD, ['A', 'B']))
-
-
-    # Test case from the project
-    # R = ['A', 'B', 'C', 'D', 'E']
-    # FD = [[['A'], ['B']], [['B'], ['C']], [['C'], ['D']], [['D'], ['E']]]
-
-    # R = ['A', 'B', 'C', 'D']
-    # FD = [[['A', 'B'], ['C']], [['C'], ['D']]]
-
-    # print(closure(R, FD, ['A']))
-    # print(all_closures(R, FD))
-    # print(all_min_covers(R, FD))
-
-    R = ['A', 'B', 'C', 'D', 'E', 'F']
-    FD = [[['A'], ['B', 'C', 'E']], [['A', 'E'], ['C', 'D']],
-          [['D'], ['B']], [['A', 'B', 'E'], ['F']]]
-    # FD = [[['A'], ['B', 'C']], [['B'], ['C','D']], [['D'], ['B', 'C']], [['A','B','E'], ['F']]]
-    print(min_covers(R, FD))
 
 
 if __name__ == '__main__':
