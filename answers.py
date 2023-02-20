@@ -186,7 +186,7 @@ def get_min_covers(R, F, restrict_to_first_min_cover):
     # As we can reach different minimal cover outcome based on which transitive FD is removed first,
     # we find permutations and rotate the order of removable transitive FD within F itself, before removing transitive FD sequentially 
     # This will result in even more sets of min_covers, nested in the list of permutations from 2b 
-    many_min_covers_nested = [remove_transitive_FD(simplified_F) for simplified_F in many_simplified_lhs_rhs_F]
+    many_min_covers_nested = [remove_transitive_FD(simplified_F, restrict_to_first_min_cover) for simplified_F in many_simplified_lhs_rhs_F]
     # Flatten nested list from 3b and 2b into a list of min_cover
     many_min_covers = [min_cover for many_min_covers_list in many_min_covers_nested for min_cover in many_min_covers_list]
 
@@ -262,7 +262,13 @@ def add_transitive_FD(F):
 # however incl_transitive_F should include additional transitive FDs compared to simplified_F 
 # incl_transitive_F will be used during the simplication process to look for alternative FDs with minimal left hand-side
 # When restrict_to_first_min_cover = True, algorithm will only return first combination of simplified alternative FDs instead of all combinations 
-def simplify_lhs_FD(simplified_F, incl_transitive_F, restrict_to_first_min_cover):
+def simplify_lhs_FD(unsorted_simplified_F, unsorted_incl_transitive_F, restrict_to_first_min_cover):
+    # Sort both F list from lhs singletons, to pairs, to triplets, etc
+    # This makes the algorithm to find alternative minimal lhs for each FD more efficient later
+    # because loop can be broken once a larger set of lhs is reached
+    simplified_F = sorted(unsorted_simplified_F, key = lambda x: len(x[0]))
+    incl_transitive_F = sorted(unsorted_incl_transitive_F, key = lambda x: len(x[0]))
+
     # all_alt is a nested list of FDs that have simplified alternative left hand-side for each FD
     # There could be 0, or many alternatives for each FD, which will lead to different outcomes of minimal covers
     # Store simplified alternative FDs separately instead of replacing into original list directly
@@ -306,7 +312,7 @@ def simplify_lhs_FD(simplified_F, incl_transitive_F, restrict_to_first_min_cover
                     [(outer_FD_lhs - inner_FD_rhs), outer_FD_rhs])
 
 
-        # Remove duplicated alternatives now, else it will lead to many more unnecessary permutated outcomes later
+        # Remove duplicated alternatives now, else it will lead to more unnecessary permutated outcomes later
         all_alt[FD_index] = remove_duplicate_FD(all_alt[FD_index])
 
 
@@ -329,7 +335,6 @@ def simplify_lhs_FD(simplified_F, incl_transitive_F, restrict_to_first_min_cover
         return [simplified_F]
 
     # Get combinations of alternatives' ids, only one alt id for each FD should be in one combination 
-    # This is why we needed to store alternative as id before running them through itertools.product
     # Example: if all_alt_ids = [['3-0'], ['4-0'], ['6-0', '6-1']] => all_combinations = [('3-0', '4-0', '6-0'), ('3-0', '4-0', '6-1')]
     all_combinations = list(itertools.product(*all_alt_ids))
 
@@ -369,118 +374,110 @@ def remove_duplicate_FD(F):
 
     return unique_F
 
-
-def remove_transitive_FD(F):
-    print('remove transitive FD', F)
-
+# F is a list of FDs in 'set' type
+# Return a list of F, with transitive FDs removed based on different permutations of order for each F returned
+# When restrict_to_first_min_cover = True, algorithm will only return first permutation of removing transitive FDs order instead of all permutations 
+def remove_transitive_FD(F, restrict_to_first_min_cover):
     omittable_FD = []
     non_omittable_FD = []
 
     # Find FD that could be replaced by other FDs using Armstrong Axioms Transitivity Rule
     # Do not remove omittable FDs from original F yet, find permutations to remove omittable FDs in sequence later as it may affect outcome of minimal cover
     for outer_FD_index, outer_FD in enumerate(F):
-        lhs_match = []
-        rhs_match = []
-        # TODO: if no match?
-
-        for inner_FD_index, inner_FD in enumerate(F):
-            # Skip same FD for outer and inner loop
-            if (outer_FD_index == inner_FD_index):
-                continue
-
-            if (outer_FD[0] == inner_FD[0]):
-                lhs_match.append(inner_FD)
-
-            if (outer_FD[1] == inner_FD[1]):
-                rhs_match.append(inner_FD)
-
         is_omittable = False
-        for lhs_match_FD in lhs_match:
-            if (is_omittable):
+
+        for first_inner_FD_index, first_inner_FD in enumerate(F):
+            if is_omittable:
                 break
 
-            for rhs_match_FD in rhs_match:
-                if (lhs_match_FD[1] == rhs_match_FD[0]):
-                    omittable_FD.append(outer_FD)
-                    is_omittable = True
-                    break
-
-        if (not is_omittable):
+            if outer_FD_index == first_inner_FD_index:
+                continue
+            
+            # first_inner_FD needs to match outer_FD lhs
+            if outer_FD[0] == first_inner_FD[0]:
+                # Find second_inner_FD that matches with first_inner_FD, first_inner_FD and second_inner_FD together should transitively infer outer_FD
+                for second_inner_FD_index, second_inner_FD in enumerate(F):
+                    if outer_FD_index == second_inner_FD_index:
+                        continue
+                    
+                    # second_inner_FD lhs needs to match first_inner_FD rhs, and second_inner_FD rhs to match outer_FD rhs
+                    if first_inner_FD[1] == second_inner_FD[0] and outer_FD[1] == second_inner_FD[1]:
+                        omittable_FD.append(outer_FD) 
+                        is_omittable = True
+                        break
+        
+        if not is_omittable:
             non_omittable_FD.append(outer_FD)
 
-    # TODO: If no omitable?
-    print('**********')
-    print('omitable', omittable_FD)
-    print('non omitable', non_omittable_FD)
-    print('**********')
 
+    # If none of the FDs can be removed (cannot be inferred by remaining FDs transitively)
+    # No need to find permutations of removal sequence, simply return original F
+    if len(omittable_FD) == 0:
+        return [F]
+
+    # Find permutations of ordering omittable FDs differently within F list
+    # Different minimal cover outcomes can be reached by:
+    # removing omittable transitive FD -> check remaining FDs -> remove omittable transitive FD -> rinse and repeat sequentially  
     many_F_with_omittable_rotated = []
     omittable_ids = ''.join([str(index) for index in range(len(omittable_FD))])
-    print('omittable_ids', omittable_ids)
     permutations = list(itertools.permutations(
         omittable_ids, len(omittable_FD)))
-    print('permutations', permutations)
 
+    # TODO: test
+    # If mode is set to only get one minimal cover, limit to only the first permutation
+    if restrict_to_first_min_cover:
+        permutations = [permutations[0]]
+
+    # Create a list of F, each F is based on a permutation of ordering the omittable FDs
+    # No additional permutations need to be found for non_omittable FDs
+    # as their ordering do not affect the minimal cover outcomes
+    # this reduces the number of permutations, and improve performance
     for permutation in permutations:
         omittable_permutation = [
             omittable_FD[int(omittable_index)] for omittable_index in permutation]
         many_F_with_omittable_rotated.append(
             [*omittable_permutation, *non_omittable_FD])
 
-    # TODO: remove?
-    print('++++++++++++++++++++++++++++++')
-    for L in many_F_with_omittable_rotated:
-        print('\n ---------------- \n')
-        print(L)
-        print('\n ---------------- \n')
-    print('++++++++++++++++++++++++++++++')
-    # TODO: end remove?
-
+    
     for rotated_F in many_F_with_omittable_rotated:
+        # Remove transitive FDs sequentially and check before removing the next
         for outer_FD_index, outer_FD in enumerate(rotated_F):
-            lhs_match = []
-            rhs_match = []
-
-            for inner_FD_index, inner_FD in enumerate(rotated_F):
-                # Skip if inner_FD has been removed in previous outer_FD loop
-                # or skip if same FD for outer and inner loop
-                if (inner_FD is None or outer_FD_index == inner_FD_index):
-                    continue
-
-                if (outer_FD[0] == inner_FD[0]):
-                    lhs_match.append(inner_FD)
-
-                if (outer_FD[1] == inner_FD[1]):
-                    rhs_match.append(inner_FD)
-
-            # If either lhs or rhs has no other FD match, this outer_FD is non omittable
-            if (len(lhs_match) == 0 or len(rhs_match) == 0):
-                continue
-
             is_outer_FD_removed = False
-            for lhs_match_FD in lhs_match:
-                if (is_outer_FD_removed):
+
+            for first_inner_FD_index, first_inner_FD in enumerate(rotated_F):
+                if is_outer_FD_removed:
                     break
 
-                for rhs_match_FD in rhs_match:
-                    if (lhs_match_FD[1] == rhs_match_FD[0]):
-                        # Remove omittable FD from F
-                        # So that it is not usable by the next outer_FD and inner_FD in the next loop
-                        rotated_F[outer_FD_index] = None
-                        is_outer_FD_removed = True
-                        break
+                # Skip if inner_FD has been removed in previous outer_FD loop
+                # or skip if same FD for outer and inner loop
+                if first_inner_FD is None or outer_FD_index == first_inner_FD_index:
+                    continue
+                
+                # Find first and second inner FD that matches to transitively infer outer_FD
+                # If two inner FDs are found, outer_FD can be removed
+                if outer_FD[0] == first_inner_FD[0]:
+                    for second_inner_FD_index, second_inner_FD in enumerate(rotated_F):
+                        # Skip if inner_FD has been removed in previous outer_FD loop
+                        # or skip if same FD for outer and inner loop
+                        if second_inner_FD is None or outer_FD_index == second_inner_FD_index:
+                            continue
+                        
+                        # second_inner_FD lhs needs to match first_inner_FD rhs, and second_inner_FD rhs to match outer_FD rhs
+                        if first_inner_FD[1] == second_inner_FD[0] and outer_FD[1] == second_inner_FD[1]:
+                            # Two matching inner FDs are found, remove outer_FD from rotated_F
+                            # So that it is not usable by the inner_FD in the next loop
+                            rotated_F[outer_FD_index] = None
+                            is_outer_FD_removed = True
+                            break
 
-    # Remove elements that are None
+
+    # Remove FD elements that are None from each F, to get minimal cover
     many_F_filtered_out_removed = []
     for new_F in many_F_with_omittable_rotated:
         many_F_filtered_out_removed.append(
             list(filter(lambda FD: FD is not None, new_F)))
 
-    print('\n===========================\n')
-    print('almost final!')
-    print(many_F_filtered_out_removed)
-    print('\n===========================\n')
-
+    # TODO: Sort FD after?
     return many_F_filtered_out_removed
 
 
@@ -601,6 +598,15 @@ def main():
     print('\n remain as set')
     print(remove_duplicate_F(remove_duplicate_F_input, is_convert_FD_to_list=False))
     print('\n')
+    print('\n============================================\n\n')
+
+    print('============================================')
+    print('simplify_lhs_FD()')
+    simplify_lhs_FD_input = [[[{'A','B', 'C'}, {'C'}], [{'A','B'}, {'C'}], [{'A'}, {'C'}], [{'C'}, {'D'}], [{'A'}, {'B'}]], [[{'A','B', 'C'}, {'C'}], [{'A','B'}, {'C'}], [{'C'}, {'D'}], [{'A'}, {'C'}], [{'B'}, {'C'}], [{'A'}, {'B'}]], False]
+    # simplify_lhs_FD_input = [[[{'A'}, {'C'}], [{'C'}, {'D'}], [{'A'}, {'B'}]], [[{'A'}, {'C'}], [{'C'}, {'D'}], [{'A'}, {'B'}], [{'A'}, {'D'}]], False]
+    print('input =', *simplify_lhs_FD_input)
+    print('\n')
+    print(simplify_lhs_FD(*simplify_lhs_FD_input))
     print('\n============================================\n\n')
 
     print('============================================')
